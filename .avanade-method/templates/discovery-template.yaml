@@ -1,0 +1,363 @@
+﻿---
+
+## ðŸ“‹ Objetivo
+
+Template padronizado para documentaÃ§Ã£o de Discovery. Captura insights de pesquisa, anÃ¡lise de stakeholders, contexto de negÃ³cio e requisitos iniciais para projetos e features.
+
+---
+
+## ðŸ“ Discovery Document Template
+
+```yaml
+# Discovery Document
+
+## Metadata
+discovery_id: "DISC-[PROJECT]-[VERSION]"
+project: "[Nome do Projeto/Feature]"
+version: "1.0"
+status: "[Draft | In Progress | Completed | Approved]"
+created_by: "[Analyst Name]"
+created_at: "[YYYY-MM-DD]"
+updated_at: "[YYYY-MM-DD]"
+stakeholders:
+  - name: "[Stakeholder 1]"
+    role: "[Role]"
+    interviewed: false
+  - name: "[Stakeholder 2]"
+    role: "[Role]"
+    interviewed: false
+
+---
+
+## 1. Executive Summary
+
+### 1.1 Purpose
+purpose: |
+  [Resumo executivo do propÃ³sito deste discovery em 2-3 parÃ¡grafos.
+   O que estamos tentando descobrir/validar?]
+
+### 1.2 Background
+background: |
+  [Contexto que levou a este discovery.
+   Problema ou oportunidade identificada.]
+
+### 1.3 Key Findings Summary
+key_findings:
+  - finding: "[Finding principal 1]"
+    impact: "[Alto/MÃ©dio/Baixo]"
+  - finding: "[Finding principal 2]"
+    impact: "[Alto/MÃ©dio/Baixo]"
+  - finding: "[Finding principal 3]"
+    impact: "[Alto/MÃ©dio/Baixo]"
+
+---
+
+## 2. Research Scope
+
+### 2.1 Objectives
+objectives:
+  primary:
+    - "[Objetivo principal 1]"
+    - "[Objetivo principal 2]"
+  secondary:
+    - "[Objetivo secundÃ¡rio 1]"
+    
+### 2.2 Scope Definition
+scope:
+  in_scope:
+    - "[Ãrea/tÃ³pico incluÃ­do]"
+    - "[Ãrea/tÃ³pico incluÃ­do]"
+  out_of_scope:
+    - "[Ãrea/tÃ³pico excluÃ­do]"
+    - "[Ãrea/tÃ³pico excluÃ­do]"
+  assumptions:
+    - "[Assumption 1]"
+    - "[Assumption 2]"
+
+### 2.3 Research Questions
+research_questions:
+  - question: "[Pergunta de pesquisa 1]"
+    priority: "[Alta/MÃ©dia/Baixa]"
+    answered: false
+    answer: ""
+  - question: "[Pergunta de pesquisa 2]"
+    priority: "[Alta/MÃ©dia/Baixa]"
+    answered: false
+    answer: ""
+
+---
+
+## 3. Stakeholder Analysis
+
+### 3.1 Stakeholder Map
+stakeholder_map:
+  decision_makers:
+    - name: "[Nome]"
+      role: "[Cargo]"
+      influence: "[Alto/MÃ©dio/Baixo]"
+      interest: "[Alto/MÃ©dio/Baixo]"
+      concerns: "[Principais preocupaÃ§Ãµes]"
+      
+  key_influencers:
+    - name: "[Nome]"
+      role: "[Cargo]"
+      influence: "[Alto/MÃ©dio/Baixo]"
+      interest: "[Alto/MÃ©dio/Baixo]"
+      
+  end_users:
+    - persona: "[Tipo de usuÃ¡rio]"
+      count: "[Estimativa de quantidade]"
+      needs: "[Principais necessidades]"
+      pain_points: "[Pontos de dor]"
+
+### 3.2 Interview Insights
+interviews:
+  - interviewee: "[Nome]"
+    role: "[Cargo]"
+    date: "[YYYY-MM-DD]"
+    key_insights:
+      - "[Insight 1]"
+      - "[Insight 2]"
+    quotes:
+      - "[CitaÃ§Ã£o relevante]"
+
+---
+
+## 4. Current State Analysis
+
+### 4.1 As-Is Process
+current_process:
+  description: |
+    [DescriÃ§Ã£o do processo atual]
+  
+  pain_points:
+    - "[Pain point 1]"
+    - "[Pain point 2]"
+    
+  workarounds:
+    - "[Workaround usado atualmente]"
+    
+  metrics:
+    - metric: "[MÃ©trica atual]"
+      value: "[Valor]"
+      source: "[Fonte do dado]"
+
+### 4.2 Existing Solutions
+existing_solutions:
+  - name: "[SoluÃ§Ã£o existente]"
+    type: "[Interno/Externo/Competidor]"
+    pros:
+      - "[Vantagem 1]"
+    cons:
+      - "[Desvantagem 1]"
+    lessons: "[O que podemos aprender]"
+
+### 4.3 Technical Landscape
+technical_context:
+  current_systems:
+    - name: "[Sistema]"
+      purpose: "[Para que Ã© usado]"
+      integration_needed: "[Sim/NÃ£o]"
+      
+  constraints:
+    - "[RestriÃ§Ã£o tÃ©cnica]"
+    
+  opportunities:
+    - "[Oportunidade tÃ©cnica]"
+
+---
+
+## 5. Business Context
+
+### 5.1 Business Drivers
+business_drivers:
+  - driver: "[Driver de negÃ³cio]"
+    urgency: "[Alta/MÃ©dia/Baixa]"
+    impact: "[DescriÃ§Ã£o do impacto]"
+
+### 5.2 Success Criteria
+success_criteria:
+  - criterion: "[CritÃ©rio de sucesso]"
+    measurement: "[Como medir]"
+    target: "[Meta]"
+    timeframe: "[Prazo]"
+
+### 5.3 Constraints & Risks
+constraints:
+  budget: "[Budget disponÃ­vel ou limitaÃ§Ã£o]"
+  timeline: "[Prazo ou deadline]"
+  resources: "[LimitaÃ§Ãµes de recursos]"
+  
+risks:
+  - risk: "[Risco identificado]"
+    probability: "[Alta/MÃ©dia/Baixa]"
+    impact: "[Alto/MÃ©dio/Baixo]"
+    mitigation: "[EstratÃ©gia de mitigaÃ§Ã£o]"
+
+---
+
+## 6. User Research
+
+### 6.1 User Personas
+personas:
+  - name: "[Nome da Persona]"
+    type: "[Primary/Secondary]"
+    demographics: |
+      [Idade, cargo, experiÃªncia tÃ©cnica, etc.]
+    goals:
+      - "[Goal 1]"
+      - "[Goal 2]"
+    frustrations:
+      - "[FrustraÃ§Ã£o 1]"
+      - "[FrustraÃ§Ã£o 2]"
+    quote: "[CitaÃ§Ã£o representativa]"
+
+### 6.2 User Journey
+user_journey:
+  scenario: "[CenÃ¡rio principal]"
+  stages:
+    - stage: "[Nome do estÃ¡gio]"
+      user_actions: "[O que usuÃ¡rio faz]"
+      touchpoints: "[Pontos de contato]"
+      emotions: "[Como se sente]"
+      pain_points: "[Pontos de dor]"
+      opportunities: "[Oportunidades de melhoria]"
+
+### 6.3 Jobs To Be Done
+jobs_to_be_done:
+  - job: "When [situaÃ§Ã£o], I want to [motivaÃ§Ã£o], so I can [resultado]"
+    priority: "[Alta/MÃ©dia/Baixa]"
+    current_solution: "[Como resolve hoje]"
+    satisfaction: "[1-5]"
+
+---
+
+## 7. Competitive Analysis
+
+### 7.1 Competitive Landscape
+competitors:
+  - name: "[Competidor]"
+    type: "[Direto/Indireto]"
+    strengths:
+      - "[ForÃ§a 1]"
+    weaknesses:
+      - "[Fraqueza 1]"
+    differentiators: "[O que os diferencia]"
+    market_position: "[PosiÃ§Ã£o no mercado]"
+
+### 7.2 Feature Comparison
+feature_comparison:
+  | Feature | Us | Competitor A | Competitor B |
+  |---------|-----|--------------|--------------|
+  | [Feature 1] | [Status] | [Status] | [Status] |
+
+---
+
+## 8. Requirements Elicitation
+
+### 8.1 Functional Requirements
+functional_requirements:
+  must_have:
+    - id: "FR-001"
+      description: "[Requisito funcional]"
+      rationale: "[Por que Ã© necessÃ¡rio]"
+      source: "[Stakeholder/Research]"
+      
+  should_have:
+    - id: "FR-002"
+      description: "[Requisito funcional]"
+      
+  could_have:
+    - id: "FR-003"
+      description: "[Requisito funcional]"
+
+### 8.2 Non-Functional Requirements
+non_functional_requirements:
+  performance:
+    - "[Requisito de performance]"
+  security:
+    - "[Requisito de seguranÃ§a]"
+  usability:
+    - "[Requisito de usabilidade]"
+  scalability:
+    - "[Requisito de escalabilidade]"
+
+### 8.3 Integration Requirements
+integration_requirements:
+  - system: "[Sistema a integrar]"
+    type: "[API/File/Event/etc]"
+    direction: "[Inbound/Outbound/Bidirectional]"
+    data: "[Dados trocados]"
+    frequency: "[Tempo real/Batch/On-demand]"
+
+---
+
+## 9. Recommendations
+
+### 9.1 Strategic Recommendations
+recommendations:
+  - recommendation: "[RecomendaÃ§Ã£o]"
+    priority: "[Alta/MÃ©dia/Baixa]"
+    effort: "[Alto/MÃ©dio/Baixo]"
+    impact: "[Alto/MÃ©dio/Baixo]"
+    rationale: "[Justificativa]"
+
+### 9.2 Proposed Solution Direction
+solution_direction: |
+  [DireÃ§Ã£o proposta para a soluÃ§Ã£o baseada nos findings.
+   NÃ£o Ã© detalhamento tÃ©cnico, mas orientaÃ§Ã£o estratÃ©gica.]
+
+### 9.3 Next Steps
+next_steps:
+  - action: "[PrÃ³ximo passo]"
+    owner: "[ResponsÃ¡vel]"
+    deadline: "[Prazo]"
+    dependencies: "[DependÃªncias]"
+
+---
+
+## 10. Appendices
+
+### 10.1 Research Artifacts
+artifacts:
+  - name: "[Nome do artefato]"
+    type: "[Interview transcript/Survey results/etc]"
+    location: "[Link ou referÃªncia]"
+
+### 10.2 Glossary
+glossary:
+  - term: "[Termo]"
+    definition: "[DefiniÃ§Ã£o]"
+
+### 10.3 References
+references:
+  - "[ReferÃªncia 1]"
+  - "[ReferÃªncia 2]"
+```
+
+---
+
+## ðŸ“Š Discovery Process Flow
+
+```mermaid
+graph LR
+    A[Kick-off] --> B[Research Planning]
+    B --> C[Stakeholder Interviews]
+    B --> D[User Research]
+    B --> E[Technical Assessment]
+    C --> F[Analysis]
+    D --> F
+    E --> F
+    F --> G[Synthesis]
+    G --> H[Recommendations]
+    H --> I[Discovery Report]
+```
+
+---
+
+## ðŸ”— Relacionamentos
+
+- **Alimenta**: ${AVANADE_PRD_TEMPLATE_YAML}, ${AVANADE_ARCHITECTURE_TEMPLATE}
+- **Usado por**: ${AVANADE_MEMORY_ANALYST_MARIA}
+- **ValidaÃ§Ã£o**: ${AVANADE_TASK_METHODOLOGY_COMPLIANCE}
+- **Workflow**: Analysis Phase workflows

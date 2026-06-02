@@ -1,0 +1,368 @@
+﻿---
+
+## ðŸ“‹ Objetivo
+
+Template para especificaÃ§Ã£o tÃ©cnica de componentes e features front-end. Documenta requisitos, design, interaÃ§Ãµes, estados e implementaÃ§Ã£o para garantir entrega consistente e de qualidade.
+
+---
+
+## ðŸ“ Front-End Specification Template
+
+```yaml
+# Front-End Specification
+
+## Metadata
+spec_id: "FE-SPEC-[PROJECT]-[FEATURE]-[VERSION]"
+feature: "[Nome da Feature]"
+component: "[Nome do Componente Principal]"
+version: "1.0"
+status: "[Draft | Review | Approved | Implemented]"
+created_by: "[Author]"
+created_at: "[YYYY-MM-DD]"
+
+---
+
+## 1. Overview
+
+### 1.1 Purpose
+purpose: |
+  [Descrever o propÃ³sito deste componente/feature em 2-3 frases]
+
+### 1.2 User Story Reference
+user_story:
+  id: "[Story ID]"
+  statement: "Como [usuÃ¡rio], quero [aÃ§Ã£o], para que [benefÃ­cio]"
+
+### 1.3 Scope
+scope:
+  included:
+    - "[Funcionalidade incluÃ­da]"
+    - "[Funcionalidade incluÃ­da]"
+  excluded:
+    - "[Funcionalidade fora do scope]"
+  future_considerations:
+    - "[PossÃ­vel extensÃ£o futura]"
+
+---
+
+## 2. Design Specification
+
+### 2.1 Visual Design
+design:
+  figma_link: "[URL do design no Figma]"
+  screenshots:
+    desktop: "[Link ou descriÃ§Ã£o]"
+    mobile: "[Link ou descriÃ§Ã£o]"
+  design_system:
+    framework: "[Fluent UI | Material | Custom]"
+    reference: "${AVANADE_FLUENT_DESIGN_GUIDELINES}"
+
+### 2.2 Layout
+layout:
+  type: "[Flex | Grid | Fixed]"
+  breakpoints:
+    mobile: "< 768px"
+    tablet: "768px - 1024px"
+    desktop: "> 1024px"
+  responsive_behavior: |
+    [Descrever como layout muda em cada breakpoint]
+
+### 2.3 Typography
+typography:
+  headings:
+    h1: "[Font, size, weight, color]"
+    h2: "[Font, size, weight, color]"
+  body: "[Font, size, weight, color]"
+  links: "[Estilo de links]"
+
+### 2.4 Colors
+colors:
+  primary: "[Hex code e uso]"
+  secondary: "[Hex code e uso]"
+  background: "[Hex code]"
+  text: "[Hex code]"
+  error: "[Hex code]"
+  success: "[Hex code]"
+
+### 2.5 Spacing
+spacing:
+  margin: "[Sistema de margens]"
+  padding: "[Sistema de padding]"
+  gap: "[Gaps entre elementos]"
+
+---
+
+## 3. Component Specification
+
+### 3.1 Component Hierarchy
+component_tree: |
+  <FeatureComponent>
+    â”œâ”€â”€ <Header />
+    â”œâ”€â”€ <MainContent>
+    â”‚   â”œâ”€â”€ <Sidebar />
+    â”‚   â””â”€â”€ <ContentArea>
+    â”‚       â”œâ”€â”€ <ComponentA />
+    â”‚       â””â”€â”€ <ComponentB />
+    â””â”€â”€ <Footer />
+
+### 3.2 Props Interface
+props:
+  - name: "propName"
+    type: "string | number | boolean | CustomType"
+    required: true
+    default: "[valor default se houver]"
+    description: "[DescriÃ§Ã£o do prop]"
+    
+  - name: "onAction"
+    type: "(data: DataType) => void"
+    required: false
+    description: "[Callback description]"
+
+### 3.3 State Management
+state:
+  local_state:
+    - name: "isLoading"
+      type: "boolean"
+      initial: "false"
+      description: "Loading state indicator"
+      
+  global_state:
+    store: "[Redux slice | Zustand store | Context]"
+    actions:
+      - "fetchData"
+      - "updateItem"
+      - "resetState"
+
+---
+
+## 4. Interaction Specification
+
+### 4.1 User Interactions
+interactions:
+  - trigger: "Button Click"
+    element: "[ID ou descriÃ§Ã£o]"
+    action: "[O que acontece]"
+    feedback: "[Feedback visual/auditivo]"
+    
+  - trigger: "Form Submit"
+    validation: "[Regras de validaÃ§Ã£o]"
+    success: "[Comportamento no sucesso]"
+    error: "[Comportamento no erro]"
+
+### 4.2 Keyboard Navigation
+keyboard:
+  - key: "Tab"
+    action: "Navigate to next focusable element"
+  - key: "Enter"
+    action: "Activate focused button/link"
+  - key: "Escape"
+    action: "Close modal/dropdown"
+  focus_order: "[Ordem de foco]"
+
+### 4.3 Animations
+animations:
+  - element: "[Elemento]"
+    trigger: "[Quando anima]"
+    type: "[Fade | Slide | Scale | etc]"
+    duration: "[ms]"
+    easing: "[ease-in-out | etc]"
+  reduce_motion: "[Comportamento quando prefers-reduced-motion]"
+
+---
+
+## 5. States
+
+### 5.1 Component States
+states:
+  default:
+    description: "Estado normal do componente"
+    visual: "[DescriÃ§Ã£o ou screenshot]"
+    
+  loading:
+    description: "Aguardando dados"
+    visual: "Skeleton loader / Spinner"
+    
+  empty:
+    description: "Nenhum dado disponÃ­vel"
+    visual: "Empty state illustration + CTA"
+    
+  error:
+    description: "Erro ao carregar/processar"
+    visual: "Error message + retry button"
+    
+  disabled:
+    description: "InteraÃ§Ã£o nÃ£o permitida"
+    visual: "Opacity reduzida, cursor not-allowed"
+
+### 5.2 Validation States (Forms)
+validation_states:
+  pristine: "Campo nÃ£o tocado"
+  touched: "Campo foi focado"
+  valid: "Valor vÃ¡lido - borda verde/check"
+  invalid: "Valor invÃ¡lido - borda vermelha + mensagem"
+  validating: "ValidaÃ§Ã£o async em progresso"
+
+---
+
+## 6. Data Specification
+
+### 6.1 Data Types
+types: |
+  interface DataItem {
+    id: string;
+    title: string;
+    description?: string;
+    status: 'active' | 'inactive';
+    createdAt: Date;
+    metadata?: Record<string, unknown>;
+  }
+
+### 6.2 API Integration
+api:
+  endpoint: "/api/v1/resource"
+  method: "GET | POST | PUT | DELETE"
+  request_format: |
+    {
+      "field": "value"
+    }
+  response_format: |
+    {
+      "data": [...],
+      "pagination": { "page": 1, "total": 100 }
+    }
+  error_handling: "[Como tratar erros da API]"
+
+### 6.3 Mock Data
+mock_data: |
+  [
+    { "id": "1", "title": "Example Item 1" },
+    { "id": "2", "title": "Example Item 2" }
+  ]
+
+---
+
+## 7. Accessibility
+
+### 7.1 Requirements
+accessibility:
+  level: "WCAG 2.1 AA"
+  requirements:
+    - "[ ] Todos elementos interativos focÃ¡veis"
+    - "[ ] Contraste mÃ­nimo 4.5:1"
+    - "[ ] Labels associados a inputs"
+    - "[ ] ARIA labels onde necessÃ¡rio"
+    - "[ ] Screen reader testado"
+  
+  aria_attributes:
+    - element: "[Elemento]"
+      attribute: "aria-label"
+      value: "[Valor]"
+      
+  reference: "${AVANADE_TASK_ACCESSIBILITY_WCAG}"
+
+---
+
+## 8. Performance
+
+### 8.1 Requirements
+performance:
+  targets:
+    first_contentful_paint: "< 1.5s"
+    largest_contentful_paint: "< 2.5s"
+    time_to_interactive: "< 3s"
+    
+  optimizations:
+    - "[ ] Lazy loading para imagens"
+    - "[ ] Code splitting para componentes pesados"
+    - "[ ] Virtualization para listas longas"
+    - "[ ] Memoization onde apropriado"
+
+---
+
+## 9. Testing
+
+### 9.1 Test Cases
+test_cases:
+  unit_tests:
+    - "Renders without crashing"
+    - "Displays correct initial state"
+    - "Handles click events"
+    - "Shows loading state"
+    - "Handles error state"
+    
+  integration_tests:
+    - "Fetches and displays data"
+    - "Submits form successfully"
+    - "Navigation works correctly"
+    
+  e2e_tests:
+    - "Complete user flow works"
+    - "Responsive behavior correct"
+
+### 9.2 Test Data
+test_scenarios:
+  - scenario: "Happy Path"
+    input: "[Dados de teste]"
+    expected: "[Resultado esperado]"
+    
+  - scenario: "Error Case"
+    input: "[Dados que causam erro]"
+    expected: "[Mensagem de erro]"
+
+---
+
+## 10. Implementation Notes
+
+### 10.1 Technical Approach
+implementation:
+  framework: "[React | Vue | Angular]"
+  patterns:
+    - "[Pattern usado - ex: Compound Components]"
+  libraries:
+    - name: "[Library name]"
+      purpose: "[Para que usar]"
+      
+### 10.2 Code Examples
+code_example: |
+  // Example component structure
+  const MyComponent: FC<Props> = ({ data, onAction }) => {
+    const [state, setState] = useState(initialState);
+    
+    return (
+      <Container>
+        {/* Implementation */}
+      </Container>
+    );
+  };
+
+### 10.3 Known Limitations
+limitations:
+  - "[LimitaÃ§Ã£o conhecida e workaround]"
+
+---
+
+## 11. Checklist de Entrega
+
+delivery_checklist:
+  - "[ ] Visual match com design (pixel perfect)"
+  - "[ ] Responsivo em todos breakpoints"
+  - "[ ] Todos estados implementados"
+  - "[ ] Keyboard navigation funcionando"
+  - "[ ] Accessibility audit passando"
+  - "[ ] Unit tests escritos (>80% coverage)"
+  - "[ ] Integration tests escritos"
+  - "[ ] Performance targets atingidos"
+  - "[ ] Cross-browser testado"
+  - "[ ] Code review aprovado"
+```
+
+---
+
+## ðŸ”— Relacionamentos
+
+- **Design System**: ${AVANADE_FLUENT_DESIGN_GUIDELINES}
+- **Wireframe Template**: ${AVANADE_WIREFRAME_TEMPLATE}
+- **Accessibility**: ${AVANADE_TASK_ACCESSIBILITY_WCAG}
+- **UX Checklist**: ${AVANADE_TASK_UX_CHECKLIST}
+- **Usado por**: ${AVANADE_MEMORY_UX_SOFIA}, ${AVANADE_MEMORY_DEV_TIAGO}
+

@@ -1,0 +1,12 @@
+{
+  "name": "copilot-combate-backend-azure",
+  "version": "1.0.0",
+  "description": "Azure Functions backend for Copilot Combate Game with Table Storage",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "@azure/data-tables": "^13.3.2"
+  }
+}

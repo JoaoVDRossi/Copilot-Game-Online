@@ -1,0 +1,184 @@
+---
+
+## 📋 Objetivo
+
+Template padronizado para criação de User Stories. Garante que todas as informações necessárias estão presentes para que o time possa entender, estimar e implementar a story.
+
+---
+
+## 📝 Story Template
+
+```yaml
+# User Story
+
+## Identification
+id: "[EPIC-ID]-[STORY-NUMBER]"  # Ex: AUTH-001
+title: "[Título conciso e descritivo]"
+epic: "[Nome/ID do Epic]"
+sprint: "[Sprint number ou Backlog]"
+status: "[Draft | Ready | In Progress | Done]"
+
+## Story Statement
+as_a: "[Tipo de usuário]"
+i_want: "[Funcionalidade ou ação]"
+so_that: "[Benefício ou valor]"
+
+# Formato alternativo em frase:
+# "Como [as_a], quero [i_want], para que [so_that]"
+
+## Priority & Sizing
+priority: "[Must Have | Should Have | Could Have | Won't Have]"
+business_value: "[High | Medium | Low]"
+story_points: "[1 | 2 | 3 | 5 | 8 | 13]"
+t_shirt_size: "[XS | S | M | L | XL]"
+
+## Acceptance Criteria
+acceptance_criteria:
+  - given: "[Contexto/pré-condição]"
+    when: "[Ação do usuário]"
+    then: "[Resultado esperado]"
+  
+  - given: "[Contexto]"
+    when: "[Ação]"
+    then: "[Resultado]"
+  
+  - description: "[Critério em formato livre se preferir]"
+
+## Technical Notes
+technical_notes:
+  approach: "[Abordagem técnica sugerida]"
+  affected_components:
+    - "[Componente 1]"
+    - "[Componente 2]"
+  api_changes: "[Novos endpoints ou mudanças]"
+  database_changes: "[Migrações necessárias]"
+  dependencies:
+    - "[Dependência técnica]"
+  risks:
+    - risk: "[Descrição do risco]"
+      mitigation: "[Como mitigar]"
+
+## Definition of Done
+definition_of_done:
+  - "[ ] Código implementado e funcionando"
+  - "[ ] Unit tests escritos (coverage > 80%)"
+  - "[ ] Integration tests se aplicável"
+  - "[ ] Code review aprovado"
+  - "[ ] Documentação atualizada"
+  - "[ ] QA aprovado em staging"
+  - "[ ] PO validou acceptance criteria"
+  - "[ ] Merged to main branch"
+
+## UI/UX
+ui_ux:
+  wireframe_link: "[Link para wireframe se existir]"
+  design_link: "[Link para design Figma/Sketch]"
+  prototype_link: "[Link para protótipo interativo]"
+  accessibility_requirements:
+    - "[Requisito de acessibilidade]"
+
+## Test Scenarios
+test_scenarios:
+  - scenario: "[Nome do cenário]"
+    steps:
+      - "[Passo 1]"
+      - "[Passo 2]"
+    expected: "[Resultado esperado]"
+    type: "[Happy Path | Edge Case | Error Case]"
+
+## Dependencies & Blockers
+dependencies:
+  stories: 
+    - "[Story ID que precisa estar pronta]"
+  external:
+    - "[Dependência externa]"
+blockers:
+  - blocker: "[Descrição do blocker]"
+    status: "[Pending | Resolved]"
+    owner: "[Responsável por resolver]"
+
+## Metadata
+metadata:
+  created_by: "[Nome]"
+  created_at: "[YYYY-MM-DD]"
+  updated_at: "[YYYY-MM-DD]"
+  assigned_to: "[Nome do developer]"
+  reviewer: "[Nome do reviewer]"
+  labels:
+    - "[Label 1]"
+    - "[Label 2]"
+```
+
+---
+
+## 📖 Guia de Preenchimento
+
+### Story Statement - Dicas
+
+| Parte | Bom Exemplo | Mau Exemplo |
+|-------|-------------|-------------|
+| As a | "usuário autenticado" | "usuário" (muito genérico) |
+| I want | "filtrar produtos por preço" | "ver produtos" (vago) |
+| So that | "encontro itens dentro do meu orçamento" | "use o sistema" (não é valor) |
+
+### Acceptance Criteria - Given/When/Then
+
+```
+✅ BOM:
+Given: usuário está na página de checkout com 3 items
+When: clica em "Remover" no segundo item
+Then: item é removido e total é recalculado
+
+❌ RUIM:
+Given: usuário no sistema
+When: faz algo
+Then: funciona
+```
+
+### Story Points Reference
+
+| Points | Complexidade | Exemplo |
+|--------|--------------|---------|
+| 1 | Trivial | Mudar texto de botão |
+| 2 | Simples | Adicionar campo em form |
+| 3 | Pequeno | Novo endpoint CRUD simples |
+| 5 | Médio | Feature com lógica moderada |
+| 8 | Complexo | Integração com serviço externo |
+| 13 | Muito complexo | Feature com múltiplos componentes |
+| 21+ | Dividir! | Epic disfarçado de story |
+
+---
+
+## ✅ Story Ready Checklist
+
+Antes de trazer para Sprint Planning:
+
+- [ ] Statement completo (as/want/so that)
+- [ ] Pelo menos 3 acceptance criteria
+- [ ] Story points estimados
+- [ ] Dependencies identificadas
+- [ ] UI/UX assets disponíveis (se aplicável)
+- [ ] Technical approach discutido
+- [ ] DoD revisado e viável
+- [ ] INVEST criteria atendidos
+
+---
+
+## 📊 INVEST Validation
+
+| Critério | ✅ | ❌ |
+|----------|---|---|
+| **I**ndependent | Pode ser desenvolvida sozinha | Depende de outra story do sprint |
+| **N**egotiable | Detalhes podem ser discutidos | Especificação rígida |
+| **V**aluable | Entrega valor claro | Só técnico, sem benefício |
+| **E**stimable | Time consegue estimar | Muitas incógnitas |
+| **S**mall | Cabe em um sprint | Mais de 13 points |
+| **T**estable | Critérios verificáveis | Subjetivo, sem métricas |
+
+---
+
+## 🔗 Relacionamentos
+
+- **Usado por**: ${AVANADE_MEMORY_PO_PAULA}, ${AVANADE_MEMORY_SM_ROBERTO}, ${AVANADE_MEMORY_DEV_TIAGO}
+- **Validação**: ${AVANADE_TASK_INVEST_VALIDATION}, ${AVANADE_TASK_STORY_READINESS}
+- **Complementa**: ${AVANADE_STORY_DOD_CHECKLIST}
