@@ -22,7 +22,7 @@ export default function DebugDashboard() {
 
   const endpoints = [
     { name: 'Sessions', url: `${API_URL}/api/sessions-get`, method: 'GET' },
-    { name: 'Game State', url: `${API_URL}/api/gamestate-get`, method: 'GET' },
+    { name: 'Game State', url: `${API_URL}/api/gamestate`, method: 'GET' },
     { name: 'Teams', url: `${API_URL}/api/teams-get`, method: 'GET' },
     { name: 'Matches', url: `${API_URL}/api/matches-get`, method: 'GET' },
     { name: 'Validations', url: `${API_URL}/api/validations-get`, method: 'GET' },
@@ -99,6 +99,7 @@ export default function DebugDashboard() {
     
     const timer = setInterval(() => {
       setClientTime(new Date())
+      setServerTime(prev => prev ? new Date() : null)
     }, 1000)
 
     return () => {
