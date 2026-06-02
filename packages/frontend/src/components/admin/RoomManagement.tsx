@@ -4,10 +4,7 @@ import {
   Hash, Clock, DoorOpen, Crown, AlertTriangle, X, Link
 } from 'lucide-react'
 import { Room, RoomStatus } from '../../types'
-import {
-  getAllRooms, createRoom, deleteRoom, startRoom, finishRoom, reopenRoom,
-  removeTeamFromRoom, getRoomsByCreator, updateRoom
-} from '../../utils/roomManager'
+import { roomsApi } from '../../utils/apiClient'
 import { getAllMatchRules } from '../../utils/cardManager'
 import { rounds } from '../../data/mockData'
 
@@ -30,8 +27,13 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
   const [expandedRoom, setExpandedRoom] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
-  const refreshRooms = useCallback(() => {
-    setRooms(creatorFilter ? getRoomsByCreator(creatorFilter) : getAllRooms())
+  const refreshRooms = useCallback(async () => {
+    try {
+      const allRooms: Room[] = await roomsApi.getAll()
+      setRooms(creatorFilter ? allRooms.filter(r => r.createdBy === creatorFilter) : allRooms)
+    } catch (e) {
+      console.error('Failed to fetch rooms:', e)
+    }
   }, [creatorFilter])
 
   useEffect(() => {
@@ -40,13 +42,22 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
     return () => clearInterval(interval)
   }, [refreshRooms])
 
-  const handleCreateRoom = (e: React.FormEvent) => {
+  const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newRoomName.trim()) return
 
-    const room = createRoom(newRoomName.trim(), creatorFilter || 'admin')
+    const room: Room = {
+      id: `room-${Date.now()}`,
+      code: Math.floor(100000 + Math.random() * 900000).toString(),
+      name: newRoomName.trim(),
+      status: 'waiting',
+      createdBy: creatorFilter || 'admin',
+      teams: [],
+      createdAt: new Date().toISOString(),
+    }
+    const created = await roomsApi.create(room)
     setNewRoomName('')
-    setExpandedRoom(room.id)
+    setExpandedRoom(created.id)
     refreshRooms()
   }
 
@@ -63,24 +74,30 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
     setTimeout(() => setCopiedLink(null), 2000)
   }
 
-  const handleStartRoom = (roomId: string) => {
-    startRoom(roomId)
+  const handleStartRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    await roomsApi.update({ ...room, status: 'playing', startedAt: new Date().toISOString() })
     refreshRooms()
   }
 
-  const handleFinishRoom = (roomId: string) => {
-    finishRoom(roomId)
+  const handleFinishRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    await roomsApi.update({ ...room, status: 'finished', finishedAt: new Date().toISOString() })
     refreshRooms()
   }
 
-  const handleReopenRoom = (roomId: string) => {
-    reopenRoom(roomId)
+  const handleReopenRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    await roomsApi.update({ ...room, status: 'waiting', startedAt: undefined, finishedAt: undefined })
     refreshRooms()
   }
 
-  const handleDeleteRoom = (roomId: string) => {
+  const handleDeleteRoom = async (roomId: string) => {
     if (confirmDelete === roomId) {
-      deleteRoom(roomId)
+      await roomsApi.delete(roomId)
       setConfirmDelete(null)
       if (expandedRoom === roomId) setExpandedRoom(null)
       refreshRooms()
@@ -90,16 +107,18 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
     }
   }
 
-  const handleRemoveTeam = (roomId: string, teamId: string) => {
-    removeTeamFromRoom(roomId, teamId)
+  const handleRemoveTeam = async (roomId: string, teamId: string) => {
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    const teams = room.teams.filter(t => t.id !== teamId)
+    await roomsApi.update({ ...room, teams })
     refreshRooms()
   }
 
-  const handleUpdateMatchConfig = (roomId: string, matchesPerRound: Record<string, number>) => {
-    const allRooms = creatorFilter ? getRoomsByCreator(creatorFilter) : getAllRooms()
-    const room = allRooms.find(r => r.id === roomId)
+  const handleUpdateMatchConfig = async (roomId: string, matchesPerRound: Record<string, number>) => {
+    const room = rooms.find(r => r.id === roomId)
     if (room) {
-      updateRoom({ ...room, matchesPerRound })
+      await roomsApi.update({ ...room, matchesPerRound })
       refreshRooms()
     }
   }

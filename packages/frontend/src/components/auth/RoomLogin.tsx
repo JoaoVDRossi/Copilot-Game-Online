@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Zap, Users, Play, KeyRound, ArrowLeft, UserPlus } from 'lucide-react'
-import { joinRoom, setCurrentRoom, setCurrentPlayer, getRoomByCode } from '../../utils/roomManager'
+import { setCurrentRoom, setCurrentPlayer } from '../../utils/roomManager'
+import { roomsApi } from '../../utils/apiClient'
 
 export default function RoomLogin() {
   const navigate = useNavigate()
@@ -11,7 +12,7 @@ export default function RoomLogin() {
   const [error, setError] = useState('')
   const [joinedInfo, setJoinedInfo] = useState<{ roomName: string; teamName: string; isNewTeam: boolean } | null>(null)
 
-  const handleJoinRoom = (e: React.FormEvent) => {
+  const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -30,57 +31,56 @@ export default function RoomLogin() {
       return
     }
 
-    // Validate room exists
-    const room = getRoomByCode(roomCode.trim())
-    if (!room) {
-      setError('Sala não encontrada! Verifique o código.')
-      return
+    try {
+      const result = await roomsApi.join({
+        roomCode: roomCode.trim(),
+        playerName: playerName.trim(),
+        teamName: teamName.trim(),
+      })
+
+      if (!result) {
+        setError('Sala não encontrada! Verifique o código.')
+        return
+      }
+
+      setCurrentRoom(result.room)
+      setCurrentPlayer({
+        name: playerName.trim(),
+        teamId: result.team.id,
+        teamName: result.team.name,
+        roomId: result.room.id,
+        roomCode: result.room.code,
+      })
+
+      const teamData = {
+        id: result.team.id,
+        name: result.team.name,
+        score: result.team.score,
+        completedRounds: result.team.completedRounds,
+        createdAt: result.team.joinedAt,
+        lastActive: new Date().toISOString(),
+        roomId: result.room.id,
+      }
+      localStorage.setItem('current-team', JSON.stringify(teamData))
+
+      setJoinedInfo({
+        roomName: result.room.name,
+        teamName: result.team.name,
+        isNewTeam: result.isNewTeam,
+      })
+
+      setTimeout(() => {
+        navigate('/rounds')
+      }, 1500)
+    } catch (err: any) {
+      if (err.message?.includes('404') || err.message?.includes('not found') || err.message?.includes('Not Found')) {
+        setError('Sala não encontrada! Verifique o código.')
+      } else if (err.message?.includes('finished')) {
+        setError('Esta sala já foi encerrada.')
+      } else {
+        setError('Erro ao entrar na sala. Tente novamente.')
+      }
     }
-
-    if (room.status === 'finished') {
-      setError('Esta sala já foi encerrada.')
-      return
-    }
-
-    // Join the room
-    const result = joinRoom(roomCode.trim(), playerName.trim(), teamName.trim())
-    if (!result) {
-      setError('Erro ao entrar na sala. Tente novamente.')
-      return
-    }
-
-    // Save context
-    setCurrentRoom(result.room)
-    setCurrentPlayer({
-      name: playerName.trim(),
-      teamId: result.team.id,
-      teamName: result.team.name,
-      roomId: result.room.id,
-      roomCode: result.room.code,
-    })
-
-    // Also save as current-team for compatibility with existing game components
-    const teamData = {
-      id: result.team.id,
-      name: result.team.name,
-      score: result.team.score,
-      completedRounds: result.team.completedRounds,
-      createdAt: result.team.joinedAt,
-      lastActive: new Date().toISOString(),
-      roomId: result.room.id,
-    }
-    localStorage.setItem('current-team', JSON.stringify(teamData))
-
-    setJoinedInfo({
-      roomName: result.room.name,
-      teamName: result.team.name,
-      isNewTeam: result.isNewTeam,
-    })
-
-    // Navigate after brief delay
-    setTimeout(() => {
-      navigate('/rounds')
-    }, 1500)
   }
 
   return (
