@@ -1,7 +1,7 @@
 // API Client for Azure Functions backend
 // Provides seamless switching between localStorage (dev) and Azure APIs (prod)
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://copilot-combate-api.azurewebsites.net';
 const USE_API = API_BASE_URL !== '';
 
 // Generic fetch wrapper with error handling

@@ -24,10 +24,12 @@ module.exports = async function (context, req) {
     const newSession = {
         id: sessionData.id || Date.now().toString(),
         roundId: sessionData.roundId,
+        gmId: sessionData.gmId || null,
         active: sessionData.active !== undefined ? sessionData.active : false,
         startedAt: sessionData.startedAt,
         endsAt: sessionData.endsAt,
-        duration: sessionData.duration || 900
+        duration: sessionData.duration || 900,
+        timerVisible: sessionData.timerVisible !== undefined ? sessionData.timerVisible : true
     };
     
     context.log('[CreateSession] Creating session:', JSON.stringify(newSession, null, 2));

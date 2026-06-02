@@ -60,10 +60,12 @@ async function createSession(session) {
     rowKey: session.id,
     id: session.id,
     roundId: session.roundId,
+    gmId: session.gmId || "",
     active: session.active,
     startedAt: session.startedAt,
     endsAt: session.endsAt,
     duration: session.duration,
+    timerVisible: session.timerVisible !== undefined ? session.timerVisible : true,
     createdAt: new Date().toISOString()
   };
   
@@ -84,10 +86,12 @@ async function getAllSessions() {
     sessions.push({
       id: entity.id,
       roundId: entity.roundId,
+      gmId: entity.gmId || null,
       active: entity.active,
       startedAt: entity.startedAt,
       endsAt: entity.endsAt,
       duration: entity.duration,
+      timerVisible: entity.timerVisible !== undefined ? entity.timerVisible : true,
       createdAt: entity.createdAt
     });
   }
@@ -104,10 +108,12 @@ async function updateSession(session) {
     rowKey: session.id,
     id: session.id,
     roundId: session.roundId,
+    gmId: session.gmId || "",
     active: session.active,
     startedAt: session.startedAt,
     endsAt: session.endsAt,
     duration: session.duration,
+    timerVisible: session.timerVisible !== undefined ? session.timerVisible : true,
     updatedAt: new Date().toISOString()
   };
   
