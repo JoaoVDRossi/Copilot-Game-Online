@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { roomsApi } from '../../utils/apiClient'
 import { setValidatorSession } from '../../utils/authManager'
+import type { ValidatorEntry } from '../../types'
 
 export default function ValidatorAccess() {
   const { token } = useParams<{ token: string }>()
@@ -30,15 +31,28 @@ export default function ValidatorAccess() {
     findRoom()
   }, [token])
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!room || !token) return
+    const sessionId = crypto.randomUUID()
+    const name = validatorName.trim() || 'Validador'
+
+    // Register this validator in the room's validators list
+    try {
+      const entry: ValidatorEntry = { sessionId, name, joinedAt: new Date().toISOString() }
+      const updatedValidators = [...(room.validators || []), entry]
+      await roomsApi.update({ ...room, validators: updatedValidators })
+    } catch {
+      // non-fatal: proceed even if update fails
+    }
+
     setValidatorSession({
       roomId: room.id,
       roomName: room.name,
       gmId: room.createdBy,
       token,
-      validatorName: validatorName.trim() || 'Validador',
+      validatorName: name,
+      sessionId,
     })
     navigate('/validador-dashboard')
   }

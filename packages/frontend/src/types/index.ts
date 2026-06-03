@@ -119,6 +119,12 @@ export interface TestSubmission {
 // Room (Sala) - for simultaneous game sessions
 export type RoomStatus = 'waiting' | 'playing' | 'finished'
 
+export interface ValidatorEntry {
+  sessionId: string
+  name: string
+  joinedAt: string
+}
+
 export interface Room {
   id: string
   code: string // 6-digit numeric code for players to join
@@ -128,6 +134,7 @@ export interface Room {
   teams: RoomTeam[]
   matchesPerRound?: Record<string, number> // e.g. { 'round-1': 3, 'round-2': 5 }
   validatorToken?: string // UUID for validator invite links
+  validators?: ValidatorEntry[] // active validators who joined via link
   createdAt: string
   startedAt?: string
   finishedAt?: string

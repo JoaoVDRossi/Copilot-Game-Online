@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAuthSession, clearAuthSession } from '../../utils/authManager'
 import { getRoomsByCreator } from '../../utils/roomManager'
 import { roomsApi } from '../../utils/apiClient'
-import { RoundSession, Card } from '../../types'
+import { RoundSession, Card, ValidatorEntry } from '../../types'
 import {
   getAllCards,
   getAllMatchRules,
@@ -161,34 +161,34 @@ export default function GameMasterDashboard() {
 
   const handleFinishGame = async () => {
     if (confirm(
-      'ATENÃ‡ÃƒO: Finalizar o jogo?\n\n' +
-      'Esta aÃ§Ã£o irÃ¡:\n' +
-      'â€¢ Parar todos os rounds ativos\n' +
-      'â€¢ Liberar visualizaÃ§Ã£o do gabarito para os participantes\n\n' +
+      'ATENÇÃO: Finalizar o jogo?\n\n' +
+      'Esta ação irá:\n' +
+      '• Parar todos os rounds ativos\n' +
+      '• Liberar visualização do gabarito para os participantes\n\n' +
       'Deseja continuar?'
     )) {
       await stopAllSessions(gmId, selectedRoom?.id)
       await finishGame(undefined, gmId)
       setIsGameFinishedState(true)
       setActiveSession(null)
-      alert('ðŸ Jogo finalizado! Os participantes agora podem visualizar o gabarito completo.')
+      alert('🏁 Jogo finalizado! Os participantes agora podem visualizar o gabarito completo.')
     }
   }
 
   const handleResetGame = async () => {
     const confirmation = prompt(
-      'ATENÃ‡ÃƒO: Esta aÃ§Ã£o irÃ¡ resetar o progresso do jogo!\n\n' +
-      'âœ… O que serÃ¡ RESETADO:\n' +
-      'â€¢ Parar todos os rounds ativos\n' +
-      'â€¢ Limpar todas as sessÃµes\n' +
-      'â€¢ Resetar progresso de todos os times\n' +
-      'â€¢ Limpar dados de jogadores\n' +
-      'â€¢ Desmarcar "Jogo Finalizado"\n' +
-      'â€¢ Apagar histÃ³rico de matches\n' +
-      'â€¢ Remover validaÃ§Ãµes e imagens de testes\n\n' +
-      'ðŸ”’ O que serÃ¡ PRESERVADO:\n' +
-      'â€¢ Cards criados/editados\n' +
-      'â€¢ Gabaritos criados/editados\n\n' +
+      'ATENÇÃO: Esta ação irá resetar o progresso do jogo!\n\n' +
+      '✅ O que será RESETADO:\n' +
+      '• Parar todos os rounds ativos\n' +
+      '• Limpar todas as sessões\n' +
+      '• Resetar progresso de todos os times\n' +
+      '• Limpar dados de jogadores\n' +
+      '• Desmarcar "Jogo Finalizado"\n' +
+      '• Apagar histórico de matches\n' +
+      '• Remover validações e imagens de testes\n\n' +
+      '🔒 O que será PRESERVADO:\n' +
+      '• Cards criados/editados\n' +
+      '• Gabaritos criados/editados\n\n' +
       'Digite "RESETAR" para confirmar:'
     )
     if (confirmation === 'RESETAR') {
@@ -201,7 +201,7 @@ export default function GameMasterDashboard() {
       setActiveSession(null)
       setSessionTime(0)
       setIsGameFinishedState(false)
-      alert('âœ… Jogo resetado com sucesso!')
+      alert('✅ Jogo resetado com sucesso!')
     } else if (confirmation !== null) {
       alert('Reset cancelado. Digite exatamente "RESETAR" para confirmar.')
     }
@@ -212,6 +212,16 @@ export default function GameMasterDashboard() {
     const token = crypto.randomUUID()
     await roomsApi.update({ ...selectedRoom, validatorToken: token })
     setSelectedRoom({ ...selectedRoom, validatorToken: token })
+  }
+
+  const handleRemoveValidator = async (sessionId: string) => {
+    if (!selectedRoom) return
+    const updated = {
+      ...selectedRoom,
+      validators: (selectedRoom.validators || []).filter((v: ValidatorEntry) => v.sessionId !== sessionId),
+    }
+    await roomsApi.update(updated)
+    setSelectedRoom(updated)
   }
 
   // Get teams from GM's rooms for leaderboard (legacy)
@@ -229,7 +239,7 @@ export default function GameMasterDashboard() {
                 GAME MASTER
               </h1>
               <p className="text-sm text-neutral-400">
-                {gmName} â€” Gerenciar suas salas
+                {gmName} — Gerenciar suas salas
               </p>
             </div>
           </div>
@@ -253,7 +263,7 @@ export default function GameMasterDashboard() {
                 onClick={() => { setSelectedRoom(null); setActiveSession(null) }}
                 className="flex items-center gap-2 bg-bg-secondary hover:bg-bg-tertiary text-neutral-400 hover:text-neutral-200 px-4 py-2 rounded-lg transition-colors font-semibold text-sm border border-neutral-700"
               >
-                â† Minhas Salas
+                ← Minhas Salas
               </button>
               <div>
                 <h2 className="font-display text-2xl font-bold text-neutral-50">{selectedRoom.name}</h2>
@@ -276,10 +286,10 @@ export default function GameMasterDashboard() {
             {/* Room Detail Sub-tabs */}
             <div className="flex gap-3 mb-8 overflow-x-auto">
               {[
-                { id: 'session', label: 'SessÃ£o', icon: Play },
+                { id: 'session', label: 'Sessão', icon: Play },
                 { id: 'cards', label: 'Cards', icon: Plus },
                 { id: 'answers', label: 'Gabaritos', icon: CheckCircle },
-                { id: 'leaderboard', label: 'ClassificaÃ§Ã£o', icon: Trophy },
+                { id: 'leaderboard', label: 'Classificação', icon: Trophy },
                 { id: 'validation', label: 'Validar Testes', icon: Check },
                 { id: 'validators', label: 'Validadores', icon: UserPlus },
               ].map(tab => {
@@ -338,12 +348,12 @@ export default function GameMasterDashboard() {
                         ? 'bg-battle-blue/20 text-battle-blue border-battle-blue/50 hover:bg-battle-blue/30'
                         : 'bg-neutral-700/50 text-neutral-400 border-neutral-600 hover:bg-neutral-700'
                     }`}
-                    title={activeSession.timerVisible !== false ? 'Timer visÃ­vel para jogadores' : 'Timer oculto dos jogadores'}
+                    title={activeSession.timerVisible !== false ? 'Timer visível para jogadores' : 'Timer oculto dos jogadores'}
                   >
                     {activeSession.timerVisible !== false ? (
                       <>
                         <Eye className="w-5 h-5" />
-                        Timer PÃºblico
+                        Timer Público
                       </>
                     ) : (
                       <>
@@ -394,8 +404,8 @@ export default function GameMasterDashboard() {
                 <div className="flex-1">
                   {isGameFinishedState ? (
                     <>
-                      <h3 className="font-display text-xl font-bold text-battle-green mb-2">ðŸ Jogo Finalizado</h3>
-                      <p className="text-sm text-neutral-400">Os participantes jÃ¡ podem visualizar o gabarito completo.</p>
+                      <h3 className="font-display text-xl font-bold text-battle-green mb-2">🏁 Jogo Finalizado</h3>
+                      <p className="text-sm text-neutral-400">Os participantes já podem visualizar o gabarito completo.</p>
                     </>
                   ) : (
                     <>
@@ -425,7 +435,7 @@ export default function GameMasterDashboard() {
                 <div className="flex-1">
                   <h3 className="font-display text-xl font-bold text-neutral-50 mb-2">Resetar Jogo Completo</h3>
                   <p className="text-sm text-neutral-400 mb-4">
-                    Parar rounds, limpar sessÃµes e resetar progresso de todos os times. <strong className="text-battle-red">AÃ§Ã£o irreversÃ­vel!</strong>
+                    Parar rounds, limpar sessões e resetar progresso de todos os times. <strong className="text-battle-red">Ação irreversível!</strong>
                   </p>
                   <button
                     onClick={handleResetGame}
@@ -445,7 +455,7 @@ export default function GameMasterDashboard() {
               <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
                 <h3 className="font-display text-xl font-bold text-neutral-50 mb-2">Ferramentas do Jogo</h3>
                 <p className="text-sm text-neutral-400 mb-6">
-                  Desmarque uma ferramenta para removÃª-la do jogo. As cartas de Prompt e Caso de Uso vinculadas a ela serÃ£o desmarcadas automaticamente.
+                  Desmarque uma ferramenta para removê-la do jogo. As cartas de Prompt e Caso de Uso vinculadas a ela serão desmarcadas automaticamente.
                 </p>
                 <div className="grid gap-4">
               {rounds.map(round => {
@@ -476,14 +486,14 @@ export default function GameMasterDashboard() {
                               onClick={() => {
                                 const result = toggleToolAndCascade(tool.id)
                                 if (result.blocked) {
-                                  alert('NÃ£o Ã© possÃ­vel desmarcar a Ãºltima ferramenta disponÃ­vel neste round.')
+                                  alert('Não é possível desmarcar a última ferramenta disponível neste round.')
                                 } else {
                                   setCards(result.cards)
                                 }
                               }}
                               title={
                                 tool.active
-                                  ? `Desmarcar "${tool.title}" â€” ${linkedCount} cartas vinculadas serÃ£o desmarcadas`
+                                  ? `Desmarcar "${tool.title}" — ${linkedCount} cartas vinculadas serão desmarcadas`
                                   : `Marcar "${tool.title}"`
                               }
                               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${
@@ -507,7 +517,7 @@ export default function GameMasterDashboard() {
                       </div>
                     </div>
 
-                    {/* Prompt and UseCase cards â€” read-only status view */}
+                    {/* Prompt and UseCase cards — read-only status view */}
                     <div className="grid grid-cols-2 gap-4 text-xs border-t border-neutral-700/50 pt-3">
                       <div>
                         <p className="text-neutral-500 font-semibold uppercase tracking-wider mb-2">Prompts</p>
@@ -544,7 +554,7 @@ export default function GameMasterDashboard() {
           <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
             <h3 className="font-display text-xl font-bold text-neutral-50 mb-4">Gabaritos</h3>
             <p className="text-sm text-neutral-400 mb-4">
-              CombinaÃ§Ãµes corretas: Prompt + Caso de Uso + Ferramenta.
+              Combinações corretas: Prompt + Caso de Uso + Ferramenta.
             </p>
             <div className="space-y-3">
               {rounds.map(round => {
@@ -580,7 +590,7 @@ export default function GameMasterDashboard() {
               <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
                 <h3 className="font-display text-xl font-bold text-neutral-50 mb-4 flex items-center gap-2">
                   <Trophy className="w-6 h-6 text-yellow-400" />
-                  ClassificaÃ§Ã£o â€” {selectedRoom.name}
+                  Classificação — {selectedRoom.name}
                 </h3>
                 {(selectedRoom.teams || []).length === 0 ? (
                   <p className="text-neutral-500">Nenhum time nesta sala ainda.</p>
@@ -590,13 +600,13 @@ export default function GameMasterDashboard() {
                       <div key={team.id} className="flex items-center justify-between bg-bg-tertiary rounded-lg p-3">
                         <div className="flex items-center gap-3">
                           <span className="text-lg font-bold text-neutral-500 w-8 text-center">
-                            {i === 0 ? 'ðŸ†' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : `#${i + 1}`}
+                            {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                           </span>
                           <div>
                             <p className="font-semibold text-neutral-200">{team.name}</p>
                             <p className="text-xs text-neutral-500">
                               {team.completedRounds?.length || 0}/4 rounds
-                              {team.currentRound && ` â€¢ ${rounds.find(r => r.id === team.currentRound)?.name || team.currentRound}`}
+                              {team.currentRound && ` • ${rounds.find(r => r.id === team.currentRound)?.name || team.currentRound}`}
                             </p>
                           </div>
                         </div>
@@ -619,9 +629,9 @@ export default function GameMasterDashboard() {
               const handleValidate = async (validationId: string) => {
                 const validation = pendingValidations.find(v => v.id === validationId)
                 if (!validation) return
-                if (confirm(`Validar teste do time "${validation.teamName}"?\n\nO time receberÃ¡ +10 pontos.`)) {
+                if (confirm(`Validar teste do time "${validation.teamName}"?\n\nO time receberá +10 pontos.`)) {
                   await markValidationCompleted(validationId, gmName)
-                  alert(`âœ… Teste validado!\n\n+10 pontos adicionados ao time "${validation.teamName}".`)
+                  alert(`✅ Teste validado!\n\n+10 pontos adicionados ao time "${validation.teamName}".`)
                   const updated = await getPendingValidations()
                   const roomTeamNames = new Set((selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase()))
                   setPendingValidations(updated.filter((v: any) => roomTeamNames.has(String(v.teamName || '').toLowerCase())))
@@ -632,13 +642,13 @@ export default function GameMasterDashboard() {
                 const validation = pendingValidations.find(v => v.id === validationId)
                 if (!validation) return
                 const reason = prompt(
-                  `âŒ Rejeitar teste do time "${validation.teamName}"\n\n` +
-                  'Por favor, explique o motivo da rejeiÃ§Ã£o.\n' +
-                  'Esta mensagem serÃ¡ enviada ao participante:\n'
+                  `❌ Rejeitar teste do time "${validation.teamName}"\n\n` +
+                  'Por favor, explique o motivo da rejeição.\n' +
+                  'Esta mensagem será enviada ao participante:\n'
                 )
                 if (reason) {
                   await rejectValidation(validationId, reason)
-                  alert(`âŒ Teste rejeitado.\n\nFeedback enviado ao time "${validation.teamName}".`)
+                  alert(`❌ Teste rejeitado.\n\nFeedback enviado ao time "${validation.teamName}".`)
                   const updated = await getPendingValidations()
                   const roomTeamNames = new Set((selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase()))
                   setPendingValidations(updated.filter((v: any) => roomTeamNames.has(String(v.teamName || '').toLowerCase())))
@@ -646,8 +656,8 @@ export default function GameMasterDashboard() {
               }
 
               const roundNames: Record<string, string> = {
-                'round-1': 'Round 1 - Mestre das NotificaÃ§Ãµes',
-                'round-2': 'Round 2 - CapitÃ£ Pesquisa Infinita',
+                'round-1': 'Round 1 - Mestre das Notificações',
+                'round-2': 'Round 2 - Capitã Pesquisa Infinita',
                 'round-3': 'Round 3 - Senhora Perfeccionista',
                 'round-4': 'Round 4 - ControlC+V'
               }
@@ -668,15 +678,15 @@ export default function GameMasterDashboard() {
                   <div className="flex items-center gap-3 mb-6">
                     <Check className="w-8 h-8 text-battle-blue" />
                     <div>
-                      <h3 className="font-display text-2xl font-bold text-neutral-50">Fila de ValidaÃ§Ã£o de Testes</h3>
+                      <h3 className="font-display text-2xl font-bold text-neutral-50">Fila de Validação de Testes</h3>
                       <p className="text-sm text-neutral-400 mt-1">Testes enviados pelos participantes desta sala</p>
                     </div>
                   </div>
                   {pendingValidations.length === 0 ? (
                     <div className="text-center py-12 text-neutral-400">
                       <Check className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="mb-2">Nenhum teste pendente de validaÃ§Ã£o</p>
-                      <p className="text-sm">Quando jogadores submeterem testes, eles aparecerÃ£o aqui</p>
+                      <p className="mb-2">Nenhum teste pendente de validação</p>
+                      <p className="text-sm">Quando jogadores submeterem testes, eles aparecerão aqui</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -684,7 +694,7 @@ export default function GameMasterDashboard() {
                         const useCaseCard = getCardById(validation.useCaseCardId)
                         const submittedDate = new Date(validation.submittedAt)
                         const diffMinutes = Math.floor((new Date().getTime() - submittedDate.getTime()) / 60000)
-                        const timeAgo = diffMinutes < 1 ? 'Agora' : diffMinutes < 60 ? `${diffMinutes}m atrÃ¡s` : diffMinutes < 1440 ? `${Math.floor(diffMinutes / 60)}h atrÃ¡s` : `${Math.floor(diffMinutes / 1440)}d atrÃ¡s`
+                        const timeAgo = diffMinutes < 1 ? 'Agora' : diffMinutes < 60 ? `${diffMinutes}m atrás` : diffMinutes < 1440 ? `${Math.floor(diffMinutes / 60)}h atrás` : `${Math.floor(diffMinutes / 1440)}d atrás`
                         return (
                           <div key={validation.id} className="bg-bg-tertiary/50 rounded-xl p-6 border border-neutral-700 hover:border-battle-blue/50 transition-colors">
                             <div className="flex items-center justify-between mb-4">
@@ -694,7 +704,7 @@ export default function GameMasterDashboard() {
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-neutral-200">{validation.teamName}</h4>
-                                  <p className="text-xs text-neutral-500">{roundNames[validation.roundId]} â€¢ {timeAgo}</p>
+                                  <p className="text-xs text-neutral-500">{roundNames[validation.roundId]} • {timeAgo}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -702,7 +712,7 @@ export default function GameMasterDashboard() {
                                   <CheckCircle className="w-4 h-4" />Validar
                                 </button>
                                 <button onClick={() => handleReject(validation.id)} className="px-4 py-2 bg-battle-red/20 hover:bg-battle-red/30 text-battle-red rounded-lg text-sm font-semibold border border-battle-red/50 transition-colors flex items-center gap-2">
-                                  <X className="w-4 h-4" />Teste nÃ£o vÃ¡lido
+                                  <X className="w-4 h-4" />Teste não válido
                                 </button>
                               </div>
                             </div>
@@ -720,12 +730,12 @@ export default function GameMasterDashboard() {
                                   <Target className="w-4 h-4 text-battle-blue" />
                                   <span className="text-xs font-bold text-battle-blue uppercase">Imagem do Teste</span>
                                 </div>
-                                <img src={validation.imageUrl} alt="EvidÃªncia do teste" className="w-full max-h-96 object-contain rounded-lg border border-neutral-700 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setImageModalUrl(validation.imageUrl!)} title="Clique para ampliar" />
-                                <p className="text-xs text-neutral-400 mt-2 text-center">ðŸ” Clique na imagem para ampliar</p>
+                                <img src={validation.imageUrl} alt="Evidência do teste" className="w-full max-h-96 object-contain rounded-lg border border-neutral-700 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setImageModalUrl(validation.imageUrl!)} title="Clique para ampliar" />
+                                <p className="text-xs text-neutral-400 mt-2 text-center">🔍 Clique na imagem para ampliar</p>
                               </div>
                             )}
                             <div className="mt-4 text-xs text-neutral-500 bg-bg-primary/50 rounded-lg p-3">
-                              <p><strong className="text-neutral-400">ðŸ“ InstruÃ§Ãµes:</strong> Verifique se o participante implementou corretamente o caso de uso usando o Copilot. Valide para aprovar (+10 pontos) ou marque como nÃ£o vÃ¡lido com feedback.</p>
+                              <p><strong className="text-neutral-400">📝 Instruções:</strong> Verifique se o participante implementou corretamente o caso de uso usando o Copilot. Valide para aprovar (+10 pontos) ou marque como não válido com feedback.</p>
                             </div>
                           </div>
                         )
@@ -748,28 +758,61 @@ export default function GameMasterDashboard() {
                   Validadores da Sala
                 </h3>
                 <p className="text-sm text-neutral-400 mb-6">
-                  Compartilhe o link abaixo para que outros usuÃ¡rios possam se tornar validadores nesta sala. Validadores podem iniciar rounds e validar testes dos participantes.
+                  Compartilhe o link abaixo para que outros usuários possam se tornar validadores nesta sala. Validadores podem iniciar rounds e validar testes dos participantes.
                 </p>
                 {selectedRoom.validatorToken ? (
-                  <div className="bg-bg-tertiary rounded-xl p-4 border border-neutral-700">
-                    <p className="text-xs text-neutral-500 mb-2 font-semibold uppercase tracking-wider">Link de Validador</p>
-                    <div className="flex items-center gap-3">
-                      <code className="flex-1 bg-bg-primary rounded-lg px-4 py-3 text-energy-primary font-mono text-sm break-all border border-neutral-800">
-                        {window.location.origin}/validador/{selectedRoom.validatorToken}
-                      </code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/validador/${selectedRoom.validatorToken}`)
-                          alert('Link copiado! Compartilhe com os validadores desta sala.')
-                        }}
-                        className="flex items-center gap-2 px-4 py-3 rounded-lg bg-energy-primary/20 hover:bg-energy-primary/30 text-energy-primary font-semibold transition-colors whitespace-nowrap border border-energy-primary/30"
-                      >
-                        Copiar Link
-                      </button>
+                  <div className="space-y-6">
+                    <div className="bg-bg-tertiary rounded-xl p-4 border border-neutral-700">
+                      <p className="text-xs text-neutral-500 mb-2 font-semibold uppercase tracking-wider">Link de Validador</p>
+                      <div className="flex items-center gap-3">
+                        <code className="flex-1 bg-bg-primary rounded-lg px-4 py-3 text-energy-primary font-mono text-sm break-all border border-neutral-800">
+                          {window.location.origin}/validador/{selectedRoom.validatorToken}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/validador/${selectedRoom.validatorToken}`)
+                            alert('Link copiado! Compartilhe com os validadores desta sala.')
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 rounded-lg bg-energy-primary/20 hover:bg-energy-primary/30 text-energy-primary font-semibold transition-colors whitespace-nowrap border border-energy-primary/30"
+                        >
+                          Copiar Link
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-500 mt-3">
+                        Ao abrir o link, o usuário poderá se cadastrar como validador desta sala e terá acesso ao painel de validação.
+                      </p>
                     </div>
-                    <p className="text-xs text-neutral-500 mt-3">
-                      Ao abrir o link, o usuÃ¡rio poderÃ¡ se cadastrar como validador desta sala e terÃ¡ acesso ao painel de validaÃ§Ã£o.
-                    </p>
+
+                    {/* Active validators list */}
+                    <div>
+                      <h4 className="font-semibold text-neutral-200 mb-3 flex items-center gap-2">
+                        <UserPlus className="w-4 h-4 text-energy-primary" />
+                        Validadores Ativos ({(selectedRoom.validators || []).length})
+                      </h4>
+                      {(selectedRoom.validators || []).length === 0 ? (
+                        <p className="text-neutral-500 text-sm italic">Nenhum validador entrou ainda.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(selectedRoom.validators as ValidatorEntry[]).map((v) => (
+                            <div key={v.sessionId} className="flex items-center justify-between bg-bg-tertiary rounded-lg px-4 py-3 border border-neutral-700">
+                              <div>
+                                <p className="text-neutral-100 font-semibold">{v.name}</p>
+                                <p className="text-neutral-500 text-xs">
+                                  Entrou em {new Date(v.joinedAt).toLocaleString('pt-BR')}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleRemoveValidator(v.sessionId)}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-battle-red/20 hover:bg-battle-red/30 text-battle-red font-semibold text-sm transition-colors border border-battle-red/30"
+                              >
+                                <X className="w-4 h-4" />
+                                Remover
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <button

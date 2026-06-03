@@ -435,7 +435,8 @@ async function createRoom(room) {
     startedAt: room.startedAt || "",
     finishedAt: room.finishedAt || "",
     matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}"),
-    validatorToken: room.validatorToken || ""
+    validatorToken: room.validatorToken || "",
+    validators: typeof room.validators === "string" ? room.validators : JSON.stringify(room.validators || [])
   };
   
   await client.createEntity(entity);
@@ -463,7 +464,8 @@ async function getAllRooms() {
       startedAt: entity.startedAt || "",
       finishedAt: entity.finishedAt || "",
       matchesPerRound: JSON.parse(entity.matchesPerRound || "{}"),
-      validatorToken: entity.validatorToken || ""
+      validatorToken: entity.validatorToken || "",
+      validators: JSON.parse(entity.validators || "[]")
     });
   }
   
@@ -494,6 +496,7 @@ async function updateRoom(room) {
     finishedAt: room.finishedAt || "",
     matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}"),
     validatorToken: room.validatorToken || "",
+    validators: typeof room.validators === "string" ? room.validators : JSON.stringify(room.validators || []),
     updatedAt: new Date().toISOString()
   };
   

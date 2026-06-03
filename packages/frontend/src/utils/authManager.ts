@@ -185,6 +185,7 @@ export interface ValidatorSession {
   gmId: string
   token: string
   validatorName: string
+  sessionId: string
 }
 
 export const getValidatorSession = (): ValidatorSession | null => {

@@ -58,6 +58,19 @@ export default function ValidatorDashboard() {
       setActiveSession(session)
       const currentRoom = rooms.find((r: any) => r.id === validatorSession.roomId)
       setRoom(currentRoom || null)
+
+      // Check if this validator was removed by the GM
+      if (currentRoom) {
+        const stillActive = (currentRoom.validators || []).some(
+          (v: any) => v.sessionId === validatorSession.sessionId
+        )
+        if (!stillActive) {
+          clearValidatorSession()
+          navigate('/')
+          return
+        }
+      }
+
       const roomTeamNames = new Set(
         ((currentRoom?.teams) || []).map((t: any) => String(t.name).toLowerCase())
       )
