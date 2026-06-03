@@ -575,9 +575,6 @@ export default function GameMasterDashboard() {
           </div>
         )}
 
-            </div>
-            )}
-
             {/* Leaderboard Tab - room specific */}
             {roomDetailTab === 'leaderboard' && (
               <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
