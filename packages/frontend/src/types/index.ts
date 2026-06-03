@@ -46,6 +46,7 @@ export interface RoundSession {
   id: string
   roundId: string
   gmId?: string // scopes the session to a specific GM's rooms
+  roomId?: string // scopes the session to a specific room
   active: boolean
   startedAt: Date | null
   endsAt: Date | null
@@ -126,6 +127,7 @@ export interface Room {
   createdBy: string // admin identifier
   teams: RoomTeam[]
   matchesPerRound?: Record<string, number> // e.g. { 'round-1': 3, 'round-2': 5 }
+  validatorToken?: string // UUID for validator invite links
   createdAt: string
   startedAt?: string
   finishedAt?: string

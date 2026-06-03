@@ -11,6 +11,8 @@ import TeamLogin from './components/auth/TeamLogin'
 import AdminLogin from './components/auth/AdminLogin'
 import GameMasterLogin from './components/auth/GameMasterLogin'
 import DirectJoinRoom from './components/auth/DirectJoinRoom'
+import ValidatorAccess from './components/auth/ValidatorAccess'
+import ValidatorDashboard from './components/admin/ValidatorDashboard'
 import { isAdmin, isGameMaster } from './utils/authManager'
 
 // Protected Route Component for Team
@@ -123,6 +125,10 @@ function App() {
             </ProtectedGameMasterRoute>
           }
         />
+
+        {/* Validator Routes */}
+        <Route path="/validador/:token" element={<ValidatorAccess />} />
+        <Route path="/validador-dashboard" element={<ValidatorDashboard />} />
       </Routes>
     </BrowserRouter>
   )

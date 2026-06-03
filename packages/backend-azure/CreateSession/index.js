@@ -25,6 +25,7 @@ module.exports = async function (context, req) {
         id: sessionData.id || Date.now().toString(),
         roundId: sessionData.roundId,
         gmId: sessionData.gmId || null,
+        roomId: sessionData.roomId || null,
         active: sessionData.active !== undefined ? sessionData.active : false,
         startedAt: sessionData.startedAt,
         endsAt: sessionData.endsAt,

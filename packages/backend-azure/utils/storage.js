@@ -61,6 +61,7 @@ async function createSession(session) {
     id: session.id,
     roundId: session.roundId,
     gmId: session.gmId || "",
+    roomId: session.roomId || "",
     active: session.active,
     startedAt: session.startedAt,
     endsAt: session.endsAt,
@@ -87,6 +88,7 @@ async function getAllSessions() {
       id: entity.id,
       roundId: entity.roundId,
       gmId: entity.gmId || null,
+      roomId: entity.roomId || null,
       active: entity.active,
       startedAt: entity.startedAt,
       endsAt: entity.endsAt,
@@ -109,6 +111,7 @@ async function updateSession(session) {
     id: session.id,
     roundId: session.roundId,
     gmId: session.gmId || "",
+    roomId: session.roomId || "",
     active: session.active,
     startedAt: session.startedAt,
     endsAt: session.endsAt,
@@ -431,7 +434,8 @@ async function createRoom(room) {
     createdAt: room.createdAt || new Date().toISOString(),
     startedAt: room.startedAt || "",
     finishedAt: room.finishedAt || "",
-    matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}")
+    matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}"),
+    validatorToken: room.validatorToken || ""
   };
   
   await client.createEntity(entity);
@@ -458,7 +462,8 @@ async function getAllRooms() {
       createdAt: entity.createdAt,
       startedAt: entity.startedAt || "",
       finishedAt: entity.finishedAt || "",
-      matchesPerRound: JSON.parse(entity.matchesPerRound || "{}")
+      matchesPerRound: JSON.parse(entity.matchesPerRound || "{}"),
+      validatorToken: entity.validatorToken || ""
     });
   }
   
@@ -488,6 +493,7 @@ async function updateRoom(room) {
     startedAt: room.startedAt || "",
     finishedAt: room.finishedAt || "",
     matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}"),
+    validatorToken: room.validatorToken || "",
     updatedAt: new Date().toISOString()
   };
   

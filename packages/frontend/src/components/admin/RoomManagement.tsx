@@ -17,9 +17,10 @@ const STATUS_CONFIG: Record<RoomStatus, { label: string; color: string; bg: stri
 interface RoomManagementProps {
   creatorFilter?: string  // If set, only show rooms created by this ID
   readOnly?: boolean      // If true, hide create/delete/start/finish actions
+  onManageRoom?: (room: Room) => void  // If set, shows "Gerenciar" button per room
 }
 
-export default function RoomManagement({ creatorFilter, readOnly }: RoomManagementProps) {
+export default function RoomManagement({ creatorFilter, readOnly, onManageRoom }: RoomManagementProps) {
   const [rooms, setRooms] = useState<Room[]>([])
   const [newRoomName, setNewRoomName] = useState('')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
       status: 'waiting',
       createdBy: creatorFilter || 'admin',
       teams: [],
+      validatorToken: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     }
     const created = await roomsApi.create(room)
@@ -182,6 +184,7 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
                 onUpdateMatchConfig={handleUpdateMatchConfig}
                 confirmDelete={confirmDelete}
                 readOnly={readOnly}
+                onManageRoom={onManageRoom}
               />
             ))}
           </div>
@@ -214,6 +217,7 @@ export default function RoomManagement({ creatorFilter, readOnly }: RoomManageme
                 onUpdateMatchConfig={handleUpdateMatchConfig}
                 confirmDelete={confirmDelete}
                 readOnly={readOnly}
+                onManageRoom={onManageRoom}
               />
             ))}
           </div>
@@ -254,12 +258,13 @@ interface RoomCardProps {
   onUpdateMatchConfig: (roomId: string, matchesPerRound: Record<string, number>) => void
   confirmDelete: string | null
   readOnly?: boolean
+  onManageRoom?: (room: Room) => void
 }
 
 function RoomCard({
   room, isExpanded, onToggle, onCopyCode, copiedCode,
   onCopyLink, copiedLink,
-  onStart, onFinish, onReopen, onDelete, onRemoveTeam, onUpdateMatchConfig, confirmDelete, readOnly
+  onStart, onFinish, onReopen, onDelete, onRemoveTeam, onUpdateMatchConfig, confirmDelete, readOnly, onManageRoom
 }: RoomCardProps) {
   const status = STATUS_CONFIG[room.status]
 
@@ -297,6 +302,16 @@ function RoomCard({
 
         {/* Copy Code & Link Buttons */}
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {onManageRoom && (
+            <button
+              onClick={() => onManageRoom(room)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-energy-primary/20 hover:bg-energy-primary/30 transition-colors text-sm text-energy-primary font-semibold"
+              title="Gerenciar sala"
+            >
+              <Crown className="w-4 h-4" />
+              Gerenciar
+            </button>
+          )}
           <button
             onClick={() => onCopyCode(room.code)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-neutral-700 transition-colors text-sm"

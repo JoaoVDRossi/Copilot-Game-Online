@@ -260,7 +260,7 @@ export const roomsApi = {
       localStorage.setItem('copilot-combate-rooms', JSON.stringify(filtered));
       return;
     }
-    return apiFetch(`/api/rooms/${id}`, { method: 'DELETE' });
+    return apiFetch(`/api/rooms-delete/${id}`, { method: 'DELETE' });
   },
 
   join: async (data: { roomCode: string; playerName: string; teamName: string }) => {

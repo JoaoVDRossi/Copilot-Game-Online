@@ -172,3 +172,39 @@ export const isAdminOrGameMaster = (): boolean => {
 export const getSessionId = (): string | null => {
   return getAuthSession()?.id ?? null
 }
+
+// ========================
+// Validator Session
+// ========================
+
+const VALIDATOR_SESSION_KEY = 'copilot-combate-validator'
+
+export interface ValidatorSession {
+  roomId: string
+  roomName: string
+  gmId: string
+  token: string
+  validatorName: string
+}
+
+export const getValidatorSession = (): ValidatorSession | null => {
+  const stored = localStorage.getItem(VALIDATOR_SESSION_KEY)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+export const setValidatorSession = (session: ValidatorSession): void => {
+  localStorage.setItem(VALIDATOR_SESSION_KEY, JSON.stringify(session))
+}
+
+export const clearValidatorSession = (): void => {
+  localStorage.removeItem(VALIDATOR_SESSION_KEY)
+}
+
+export const isValidator = (): boolean => {
+  return !!getValidatorSession()
+}

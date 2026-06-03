@@ -71,7 +71,7 @@ export default function GameBoard() {
     const roomGmId = room?.createdBy
     
     const checkSession = async () => {
-      const session = await fetchActiveSession(roomGmId)
+      const session = await fetchActiveSession(roomGmId, room?.id)
       
       if (!session || session.roundId !== roundId) {
         console.log('❌ [SESSION CHECK] Round not active')
@@ -100,7 +100,7 @@ export default function GameBoard() {
       tick++
       // Full session + room check every 5 seconds
       if (tick % 5 === 0) {
-        const session = await fetchActiveSession(roomGmId)
+        const session = await fetchActiveSession(roomGmId, room?.id)
         if (!session || session.roundId !== roundId || !session.active) {
           console.log('🛑 [SESSION CHECK] Round stopped by admin')
           alert('⚠️ Round finalizado pelo Game Master!')

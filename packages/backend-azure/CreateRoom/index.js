@@ -39,7 +39,8 @@ module.exports = async function (context, req) {
         teams: JSON.stringify(roomData.teams || []),
         createdAt: roomData.createdAt || new Date().toISOString(),
         startedAt: roomData.startedAt || '',
-        finishedAt: roomData.finishedAt || ''
+        finishedAt: roomData.finishedAt || '',
+        validatorToken: roomData.validatorToken || require('crypto').randomUUID()
     };
 
     try {

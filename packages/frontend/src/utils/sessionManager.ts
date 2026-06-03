@@ -12,6 +12,12 @@ const filterByGm = (sessions: RoundSession[], gmId?: string): RoundSession[] => 
   return sessions.filter(s => s.gmId === gmId)
 }
 
+// Helper: filter sessions by roomId (if session has no roomId, it matches any room for backward compat)
+const filterByRoom = (sessions: RoundSession[], roomId?: string): RoundSession[] => {
+  if (!roomId) return sessions
+  return sessions.filter(s => !s.roomId || s.roomId === roomId)
+}
+
 // Get current active session (sync - uses cached value when using API)
 export const getActiveSession = (gmId?: string): RoundSession | null => {
   if (USE_API) {
@@ -37,8 +43,8 @@ export const getActiveSession = (gmId?: string): RoundSession | null => {
 }
 
 // Fetch and cache active session from API (async)
-export const fetchActiveSession = async (gmId?: string): Promise<RoundSession | null> => {
-  console.log('🔍 [SESSION] Fetching active session... useAPI:', USE_API, 'gmId:', gmId)
+export const fetchActiveSession = async (gmId?: string, roomId?: string): Promise<RoundSession | null> => {
+  console.log('🔍 [SESSION] Fetching active session... useAPI:', USE_API, 'gmId:', gmId, 'roomId:', roomId)
   
   if (!USE_API) {
     return getActiveSession(gmId)
@@ -102,8 +108,8 @@ export const fetchActiveSession = async (gmId?: string): Promise<RoundSession | 
 }
 
 // Start a new round session
-export const startRoundSession = async (roundId: string, durationMinutes: number = 15, gmId?: string): Promise<RoundSession> => {
-  console.log('🚀 [SESSION] Starting round session:', { roundId, durationMinutes, gmId, useAPI: USE_API })
+export const startRoundSession = async (roundId: string, durationMinutes: number = 15, gmId?: string, roomId?: string): Promise<RoundSession> => {
+  console.log('🚀 [SESSION] Starting round session:', { roundId, durationMinutes, gmId, roomId, useAPI: USE_API })
   
   const now = new Date()
   const endsAt = new Date(now.getTime() + durationMinutes * 60 * 1000)
@@ -112,6 +118,7 @@ export const startRoundSession = async (roundId: string, durationMinutes: number
     id: `session-${Date.now()}`,
     roundId,
     gmId,
+    roomId,
     active: true,
     startedAt: now,
     endsAt,
@@ -124,7 +131,7 @@ export const startRoundSession = async (roundId: string, durationMinutes: number
   if (USE_API) {
     try {
       console.log('🌐 [SESSION] Using API to create session...')
-      await stopAllSessions(gmId)
+      await stopAllSessions(gmId, roomId)
       
       const created: RoundSession = await sessionsApi.create(session)
       
@@ -139,7 +146,7 @@ export const startRoundSession = async (roundId: string, durationMinutes: number
   
   // Fallback to localStorage
   console.log('💾 [SESSION] Using localStorage to create session...')
-  await stopAllSessions(gmId)
+  await stopAllSessions(gmId, roomId)
   
   const stored = localStorage.getItem(SESSION_STORAGE_KEY)
   const sessions: RoundSession[] = stored ? JSON.parse(stored) : []
@@ -152,11 +159,11 @@ export const startRoundSession = async (roundId: string, durationMinutes: number
 }
 
 // Stop a round session
-export const stopRoundSession = async (roundId: string, gmId?: string) => {
+export const stopRoundSession = async (roundId: string, gmId?: string, roomId?: string) => {
   if (USE_API) {
     try {
       const sessions: RoundSession[] = await sessionsApi.getAll()
-      const session = filterByGm(sessions, gmId).find((s: RoundSession) => s.roundId === roundId && s.active)
+      const session = filterByRoom(filterByGm(sessions, gmId), roomId).find((s: RoundSession) => s.roundId === roundId && s.active)
       
       if (session) {
         const updated: RoundSession = { ...session, active: false }
@@ -174,19 +181,19 @@ export const stopRoundSession = async (roundId: string, gmId?: string) => {
   
   const sessions: RoundSession[] = JSON.parse(stored)
   const updated = sessions.map(s =>
-    s.roundId === roundId && s.active && (!gmId || s.gmId === gmId) ? { ...s, active: false } : s
+    s.roundId === roundId && s.active && (!gmId || s.gmId === gmId) && (!roomId || !s.roomId || s.roomId === roomId) ? { ...s, active: false } : s
   )
   
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated))
 }
 
-// Stop all active sessions (scoped by gmId if provided)
-export const stopAllSessions = async (gmId?: string) => {
+// Stop all active sessions (scoped by gmId and optional roomId)
+export const stopAllSessions = async (gmId?: string, roomId?: string) => {
   if (USE_API) {
     try {
       const sessions: RoundSession[] = await sessionsApi.getAll()
       
-      for (const session of filterByGm(sessions, gmId)) {
+      for (const session of filterByRoom(filterByGm(sessions, gmId), roomId)) {
         if (session.active) {
           const updated: RoundSession = { ...session, active: false }
           await sessionsApi.update(updated)
@@ -211,12 +218,12 @@ export const stopAllSessions = async (gmId?: string) => {
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated))
 }
 
-// Toggle timer visibility (scoped by gmId)
-export const toggleTimerVisibility = async (gmId?: string): Promise<boolean> => {
+// Toggle timer visibility (scoped by gmId and optional roomId)
+export const toggleTimerVisibility = async (gmId?: string, roomId?: string): Promise<boolean> => {
   if (USE_API) {
     try {
       const sessions: RoundSession[] = await sessionsApi.getAll()
-      const active = filterByGm(sessions, gmId).find((s: RoundSession) => s.active)
+      const active = filterByRoom(filterByGm(sessions, gmId), roomId).find((s: RoundSession) => s.active)
       if (active) {
         const newVisible = !(active.timerVisible ?? true)
         const updated: RoundSession = { ...active, timerVisible: newVisible }
@@ -234,7 +241,7 @@ export const toggleTimerVisibility = async (gmId?: string): Promise<boolean> => 
   if (!stored) return true
 
   const sessions: RoundSession[] = JSON.parse(stored)
-  const active = filterByGm(sessions, gmId).find(s => s.active)
+  const active = filterByRoom(filterByGm(sessions, gmId), roomId).find(s => s.active)
   if (active) {
     const newVisible = !(active.timerVisible ?? true)
     active.timerVisible = newVisible
