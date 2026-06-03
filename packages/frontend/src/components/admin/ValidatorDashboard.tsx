@@ -74,8 +74,12 @@ export default function ValidatorDashboard() {
       const roomTeamNames = new Set(
         ((currentRoom?.teams) || []).map((t: any) => String(t.name).toLowerCase())
       )
+      const roomId = validatorSession.roomId
       setPendingValidations(
-        validations.filter((v) => roomTeamNames.has(String(v.teamName || '').toLowerCase()))
+        validations.filter((v) => {
+          if (v.roomId) return v.roomId === roomId
+          return roomTeamNames.has(String(v.teamName || '').toLowerCase())
+        })
       )
     } catch (err) {
       console.error('ValidatorDashboard loadData error:', err)

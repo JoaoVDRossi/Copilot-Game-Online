@@ -52,6 +52,8 @@ export interface RoundSession {
   endsAt: Date | null
   duration: number // in seconds (900 = 15 minutes)
   timerVisible: boolean // if true, players see the countdown; if false, only GM sees it
+  paused?: boolean // if true, timer is frozen
+  pausedAt?: string | null // ISO timestamp when timer was paused
 }
 
 // Match Rule
@@ -122,6 +124,7 @@ export type RoomStatus = 'waiting' | 'playing' | 'finished'
 export interface ValidatorEntry {
   sessionId: string
   name: string
+  password: string
   joinedAt: string
 }
 

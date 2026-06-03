@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trophy, Zap, Target, Wrench, CheckCircle, Clock, Award, Upload, Image as ImageIcon, XCircle, AlertCircle } from 'lucide-react'
 import { getCurrentTeam } from '../../utils/teamsManager'
+import { getCurrentRoom } from '../../utils/roomManager'
 import { getTeamMatchHistory, markMatchAsTested, resetMatchTestedStatus, type MatchHistory } from '../../utils/matchHistoryManager'
 import { submitTestValidation, removeRejectedValidation } from '../../utils/testValidationManager'
 import { getAllTestValidations } from '../../utils/testValidationManager'
@@ -121,7 +122,8 @@ export default function MyMatches() {
       match.roundId,
       match.useCaseCardId,
       useCaseCard.title,
-      testImage
+      testImage,
+      getCurrentRoom()?.id  // pass roomId so GM can filter by room
     )
 
     // Mark as tested in history

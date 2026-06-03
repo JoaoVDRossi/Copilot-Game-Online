@@ -254,11 +254,73 @@ export const toggleTimerVisibility = async (gmId?: string, roomId?: string): Pro
 // Get remaining time in seconds
 export const getRemainingTime = (session: RoundSession): number => {
   if (!session.endsAt) return 0
-  
+
+  // If paused, return the frozen time (endsAt - pausedAt)
+  if (session.paused && session.pausedAt) {
+    const frozen = Math.floor(
+      (new Date(session.endsAt as any).getTime() - new Date(session.pausedAt).getTime()) / 1000
+    )
+    return Math.max(0, frozen)
+  }
+
   const now = new Date()
   const remaining = Math.floor((new Date(session.endsAt).getTime() - now.getTime()) / 1000)
-  
+
   return Math.max(0, remaining)
+}
+
+// Pause the active round session (freezes the timer)
+export const pauseRoundSession = async (gmId?: string, roomId?: string): Promise<RoundSession | null> => {
+  if (USE_API) {
+    try {
+      const sessions: RoundSession[] = await sessionsApi.getAll()
+      const active = filterByRoom(filterByGm(sessions, gmId), roomId).find((s: RoundSession) => s.active)
+      if (active && !active.paused) {
+        const updated: RoundSession = { ...active, paused: true, pausedAt: new Date().toISOString() }
+        await sessionsApi.update(updated)
+        const withDates: RoundSession = {
+          ...updated,
+          startedAt: active.startedAt ? new Date(active.startedAt as any) : null,
+          endsAt: active.endsAt ? new Date(active.endsAt as any) : null,
+        }
+        ;(window as any).__cachedActiveSession = withDates
+        return withDates
+      }
+      return active ?? null
+    } catch (error) {
+      console.error('Error pausing session:', error)
+    }
+  }
+  return null
+}
+
+// Resume the active round session (recalculates endsAt based on remaining frozen time)
+export const resumeRoundSession = async (gmId?: string, roomId?: string): Promise<RoundSession | null> => {
+  if (USE_API) {
+    try {
+      const sessions: RoundSession[] = await sessionsApi.getAll()
+      const active = filterByRoom(filterByGm(sessions, gmId), roomId).find((s: RoundSession) => s.active)
+      if (active && active.paused && active.pausedAt) {
+        const remaining = Math.floor(
+          (new Date(active.endsAt as any).getTime() - new Date(active.pausedAt).getTime()) / 1000
+        )
+        const newEndsAt = new Date(Date.now() + remaining * 1000)
+        const updated: RoundSession = { ...active, paused: false, pausedAt: null, endsAt: newEndsAt }
+        await sessionsApi.update(updated)
+        const withDates: RoundSession = {
+          ...updated,
+          startedAt: active.startedAt ? new Date(active.startedAt as any) : null,
+          endsAt: newEndsAt,
+        }
+        ;(window as any).__cachedActiveSession = withDates
+        return withDates
+      }
+      return active ?? null
+    } catch (error) {
+      console.error('Error resuming session:', error)
+    }
+  }
+  return null
 }
 
 // Format time for display (MM:SS)

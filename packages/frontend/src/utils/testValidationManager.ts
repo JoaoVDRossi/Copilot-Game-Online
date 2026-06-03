@@ -13,6 +13,7 @@ export interface TestValidation {
   teamId: string
   teamName: string
   roundId: string
+  roomId?: string
   useCaseCardId: string
   useCaseTitle: string
   imageUrl?: string
@@ -61,7 +62,8 @@ export const submitTestValidation = async (
   roundId: string,
   useCaseCardId: string,
   useCaseTitle: string,
-  imageUrl?: string
+  imageUrl?: string,
+  roomId?: string
 ): Promise<void> => {
   const newValidation: TestValidation = {
     id: `validation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -69,6 +71,7 @@ export const submitTestValidation = async (
     teamId,
     teamName,
     roundId,
+    roomId,
     useCaseCardId,
     useCaseTitle,
     imageUrl,

@@ -8,6 +8,8 @@ export default function ValidatorAccess() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
   const [validatorName, setValidatorName] = useState('')
+  const [validatorPassword, setValidatorPassword] = useState('')
+  const [formError, setFormError] = useState('')
   const [room, setRoom] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -34,12 +36,25 @@ export default function ValidatorAccess() {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!room || !token) return
+
+    const name = validatorName.trim()
+    const password = validatorPassword.trim()
+
+    if (!name) {
+      setFormError('O nome é obrigatório.')
+      return
+    }
+    if (!password) {
+      setFormError('A senha é obrigatória.')
+      return
+    }
+    setFormError('')
+
     const sessionId = crypto.randomUUID()
-    const name = validatorName.trim() || 'Validador'
 
     // Register this validator in the room's validators list
     try {
-      const entry: ValidatorEntry = { sessionId, name, joinedAt: new Date().toISOString() }
+      const entry: ValidatorEntry = { sessionId, name, password, joinedAt: new Date().toISOString() }
       const updatedValidators = [...(room.validators || []), entry]
       await roomsApi.update({ ...room, validators: updatedValidators })
     } catch {
@@ -87,13 +102,30 @@ export default function ValidatorAccess() {
           Como validador, você poderá iniciar rounds e validar testes dos participantes desta sala.
         </p>
         <form onSubmit={handleJoin} className="space-y-4">
-          <input
-            type="text"
-            value={validatorName}
-            onChange={e => setValidatorName(e.target.value)}
-            placeholder="Seu nome (opcional)"
-            className="w-full bg-bg-tertiary text-neutral-200 rounded-lg px-4 py-3 border border-neutral-700 focus:border-energy-primary focus:outline-none"
-          />
+          <div>
+            <label className="block text-sm font-semibold text-neutral-300 mb-1">Nome <span className="text-battle-red">*</span></label>
+            <input
+              type="text"
+              value={validatorName}
+              onChange={e => setValidatorName(e.target.value)}
+              placeholder="Seu nome"
+              required
+              className="w-full bg-bg-tertiary text-neutral-200 rounded-lg px-4 py-3 border border-neutral-700 focus:border-energy-primary focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-neutral-300 mb-1">Senha <span className="text-battle-red">*</span></label>
+            <input
+              type="password"
+              value={validatorPassword}
+              onChange={e => setValidatorPassword(e.target.value)}
+              placeholder="Crie uma senha para identificação"
+              required
+              className="w-full bg-bg-tertiary text-neutral-200 rounded-lg px-4 py-3 border border-neutral-700 focus:border-energy-primary focus:outline-none"
+            />
+            <p className="text-xs text-neutral-500 mt-1">O Game Master principal poderá ver seu nome e senha na lista de validadores.</p>
+          </div>
+          {formError && <p className="text-battle-red text-sm font-semibold">{formError}</p>}
           <button
             type="submit"
             className="w-full bg-energy-primary hover:bg-energy-primary/80 text-white px-6 py-3 rounded-lg font-semibold transition-colors"

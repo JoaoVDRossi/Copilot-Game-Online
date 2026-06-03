@@ -67,6 +67,8 @@ async function createSession(session) {
     endsAt: session.endsAt,
     duration: session.duration,
     timerVisible: session.timerVisible !== undefined ? session.timerVisible : true,
+    paused: session.paused || false,
+    pausedAt: session.pausedAt || "",
     createdAt: new Date().toISOString()
   };
   
@@ -94,6 +96,8 @@ async function getAllSessions() {
       endsAt: entity.endsAt,
       duration: entity.duration,
       timerVisible: entity.timerVisible !== undefined ? entity.timerVisible : true,
+      paused: entity.paused || false,
+      pausedAt: entity.pausedAt || null,
       createdAt: entity.createdAt
     });
   }
@@ -117,6 +121,8 @@ async function updateSession(session) {
     endsAt: session.endsAt,
     duration: session.duration,
     timerVisible: session.timerVisible !== undefined ? session.timerVisible : true,
+    paused: session.paused || false,
+    pausedAt: session.pausedAt || "",
     updatedAt: new Date().toISOString()
   };
   
@@ -291,6 +297,7 @@ async function createValidation(validation) {
     teamId: validation.teamId,
     teamName: validation.teamName || "",
     roundId: validation.roundId || "",
+    roomId: validation.roomId || "",
     useCaseCardId: validation.useCaseCardId || "",
     useCaseTitle: validation.useCaseTitle || "",
     imageUrl: validation.imageUrl || "",
@@ -323,6 +330,7 @@ async function getAllValidations() {
       teamId: entity.teamId,
       teamName: entity.teamName || "",
       roundId: entity.roundId || "",
+      roomId: entity.roomId || "",
       useCaseCardId: entity.useCaseCardId || "",
       useCaseTitle: entity.useCaseTitle || "",
       imageUrl: entity.imageUrl || "",
@@ -351,6 +359,7 @@ async function updateValidation(validation) {
     teamId: validation.teamId,
     teamName: validation.teamName || "",
     roundId: validation.roundId || "",
+    roomId: validation.roomId || "",
     useCaseCardId: validation.useCaseCardId || "",
     useCaseTitle: validation.useCaseTitle || "",
     imageUrl: validation.imageUrl || "",

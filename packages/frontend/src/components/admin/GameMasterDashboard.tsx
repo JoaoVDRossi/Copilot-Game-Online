@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useRef } from 'react'
-import { Gamepad2, Play, Plus, CheckCircle, Trophy, LogOut, Clock, Square, Check, X, Target, Flag, RotateCcw, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Gamepad2, Play, Pause, Plus, CheckCircle, Trophy, LogOut, Clock, Square, Check, X, Target, Flag, RotateCcw, Eye, EyeOff, UserPlus } from 'lucide-react'
 import RoomManagement from './RoomManagement'
 import { rounds } from '../../data/mockData'
-import { fetchActiveSession, startRoundSession, stopRoundSession, formatTime, stopAllSessions, getRemainingTime, toggleTimerVisibility } from '../../utils/sessionManager'
+import { fetchActiveSession, startRoundSession, stopRoundSession, formatTime, stopAllSessions, getRemainingTime, toggleTimerVisibility, pauseRoundSession, resumeRoundSession } from '../../utils/sessionManager'
 import { useNavigate } from 'react-router-dom'
 import { getAuthSession, clearAuthSession } from '../../utils/authManager'
 import { getRoomsByCreator } from '../../utils/roomManager'
@@ -44,6 +44,11 @@ export default function GameMasterDashboard() {
   const [sessionTime, setSessionTime] = useState(0)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Round duration input state (minutes per round, defaults to 15)
+  const [roundDurations, setRoundDurations] = useState<Record<string, number>>({
+    'round-1': 15, 'round-2': 15, 'round-3': 15, 'round-4': 15,
+  })
+
   // Timer that computes remaining time from the persisted endsAt timestamp
   useEffect(() => {
     if (activeSession) {
@@ -52,10 +57,12 @@ export default function GameMasterDashboard() {
 
       // Update every second by recalculating from endsAt (survives F5)
       timerIntervalRef.current = setInterval(() => {
+        // When paused, getRemainingTime returns the frozen value — no countdown
         const remaining = getRemainingTime(activeSession)
         setSessionTime(remaining)
 
-        if (remaining <= 0) {
+        // Only auto-stop when NOT paused and time runs out
+        if (remaining <= 0 && !activeSession.paused) {
           if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current)
             timerIntervalRef.current = null
@@ -91,17 +98,26 @@ export default function GameMasterDashboard() {
       try {
         const allRooms: any[] = await roomsApi.getAll()
         const fresh = allRooms.find((r: any) => r.id === roomId)
-        if (fresh) setSelectedRoom(fresh)
+        if (fresh) setSelectedRoom((prev: any) => ({
+          ...fresh,
+          // Preserve validatorToken locally if Azure hasn't persisted it yet (timing window)
+          validatorToken: fresh.validatorToken || prev?.validatorToken || '',
+          validators: fresh.validators?.length ? fresh.validators : (prev?.validators || []),
+        }))
         setIsGameFinishedState(fresh?.status === 'finished')
       } catch (_) {}
       const s = await fetchActiveSession(gmId, roomId)
       setActiveSession(prev => (s?.id !== prev?.id ? s : prev))
       try {
         const validations = await getPendingValidations()
+        // Filter by roomId when available (preferred); fall back to team name matching
         const roomTeamNames = new Set(
           (selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase())
         )
-        setPendingValidations(validations.filter((v: any) => roomTeamNames.has(String(v.teamName || '').toLowerCase())))
+        setPendingValidations(validations.filter((v: any) => {
+          if (v.roomId) return v.roomId === roomId
+          return roomTeamNames.has(String(v.teamName || '').toLowerCase())
+        }))
       } catch (_) {}
     }
     updateState()
@@ -132,9 +148,21 @@ export default function GameMasterDashboard() {
       return
     }
     if (!selectedRoom) return
-    await startRoundSession(roundId, 15, gmId, selectedRoom.id)
+    const duration = roundDurations[roundId] ?? 15
+    await startRoundSession(roundId, duration, gmId, selectedRoom.id)
     const s = await fetchActiveSession(gmId, selectedRoom.id)
     setActiveSession(s)
+  }
+
+  const handlePauseResume = async () => {
+    if (!activeSession) return
+    if (activeSession.paused) {
+      const updated = await resumeRoundSession(gmId, selectedRoom?.id)
+      if (updated) setActiveSession(updated)
+    } else {
+      const updated = await pauseRoundSession(gmId, selectedRoom?.id)
+      if (updated) setActiveSession(updated)
+    }
   }
 
   const handleStopRound = async () => {
@@ -327,8 +355,11 @@ export default function GameMasterDashboard() {
                     <div className="text-sm text-neutral-400 mb-1 flex items-center gap-2 justify-end">
                       <Clock className="w-4 h-4" />
                       Tempo Restante
+                      {activeSession.paused && (
+                        <span className="text-xs font-bold text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded px-2 py-0.5">⏸ PAUSADO</span>
+                      )}
                     </div>
-                    <div className={`font-mono text-4xl font-bold ${sessionTime <= 60 ? 'text-battle-red animate-pulse' : 'text-battle-green'}`}>
+                    <div className={`font-mono text-4xl font-bold ${activeSession.paused ? 'text-yellow-400' : sessionTime <= 60 ? 'text-battle-red animate-pulse' : 'text-battle-green'}`}>
                       {formatTime(sessionTime)}
                     </div>
                   </div>
@@ -340,6 +371,21 @@ export default function GameMasterDashboard() {
                   >
                     <Square className="w-5 h-5" />
                     Parar Round
+                  </button>
+                  <button
+                    onClick={handlePauseResume}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-display font-semibold transition-all border ${
+                      activeSession.paused
+                        ? 'bg-battle-green/20 text-battle-green border-battle-green/50 hover:bg-battle-green/30'
+                        : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
+                    }`}
+                    title={activeSession.paused ? 'Retomar contagem do tempo' : 'Pausar contagem do tempo'}
+                  >
+                    {activeSession.paused ? (
+                      <><Play className="w-5 h-5" />Retomar</>
+                    ) : (
+                      <><Pause className="w-5 h-5" />Pausar</>
+                    )}
                   </button>
                   <button
                     onClick={handleToggleTimerVisibility}
@@ -372,19 +418,33 @@ export default function GameMasterDashboard() {
             )}
             <div className="grid md:grid-cols-2 gap-4">
               {rounds.map(round => (
-                <div key={round.id} className="bg-bg-secondary rounded-xl p-4 border border-neutral-700 flex items-center justify-between">
-                  <div>
+                <div key={round.id} className="bg-bg-secondary rounded-xl p-4 border border-neutral-700 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-display font-bold text-neutral-50">{round.name}</h4>
                     <p className="text-xs text-neutral-500">{round.description}</p>
                   </div>
-                  <button
-                    onClick={() => handleStartRound(round.id)}
-                    disabled={!!activeSession}
-                    className="flex items-center gap-2 bg-battle-green/20 text-battle-green hover:bg-battle-green/30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
-                  >
-                    <Play className="w-4 h-4" />
-                    Iniciar
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-bg-tertiary rounded-lg border border-neutral-700 px-2 py-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={roundDurations[round.id] ?? 15}
+                        onChange={e => setRoundDurations(prev => ({ ...prev, [round.id]: Math.max(1, Math.min(120, parseInt(e.target.value) || 1)) }))}
+                        disabled={!!activeSession}
+                        className="w-12 bg-transparent text-neutral-200 text-center text-sm font-mono focus:outline-none disabled:opacity-50"
+                      />
+                      <span className="text-xs text-neutral-500">min</span>
+                    </div>
+                    <button
+                      onClick={() => handleStartRound(round.id)}
+                      disabled={!!activeSession}
+                      className="flex items-center gap-2 bg-battle-green/20 text-battle-green hover:bg-battle-green/30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
+                    >
+                      <Play className="w-4 h-4" />
+                      Iniciar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -634,7 +694,11 @@ export default function GameMasterDashboard() {
                   alert(`✅ Teste validado!\n\n+10 pontos adicionados ao time "${validation.teamName}".`)
                   const updated = await getPendingValidations()
                   const roomTeamNames = new Set((selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase()))
-                  setPendingValidations(updated.filter((v: any) => roomTeamNames.has(String(v.teamName || '').toLowerCase())))
+                  const roomId2 = selectedRoom?.id
+                  setPendingValidations(updated.filter((v: any) => {
+                    if (v.roomId) return v.roomId === roomId2
+                    return roomTeamNames.has(String(v.teamName || '').toLowerCase())
+                  }))
                 }
               }
 
@@ -651,7 +715,11 @@ export default function GameMasterDashboard() {
                   alert(`❌ Teste rejeitado.\n\nFeedback enviado ao time "${validation.teamName}".`)
                   const updated = await getPendingValidations()
                   const roomTeamNames = new Set((selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase()))
-                  setPendingValidations(updated.filter((v: any) => roomTeamNames.has(String(v.teamName || '').toLowerCase())))
+                  const roomId2 = selectedRoom?.id
+                  setPendingValidations(updated.filter((v: any) => {
+                    if (v.roomId) return v.roomId === roomId2
+                    return roomTeamNames.has(String(v.teamName || '').toLowerCase())
+                  }))
                 }
               }
 
@@ -793,13 +861,19 @@ export default function GameMasterDashboard() {
                         <p className="text-neutral-500 text-sm italic">Nenhum validador entrou ainda.</p>
                       ) : (
                         <div className="space-y-2">
-                          {(selectedRoom.validators as ValidatorEntry[]).map((v) => (
+                          {(selectedRoom.validators as ValidatorEntry[]).map((v, i) => (
                             <div key={v.sessionId} className="flex items-center justify-between bg-bg-tertiary rounded-lg px-4 py-3 border border-neutral-700">
-                              <div>
-                                <p className="text-neutral-100 font-semibold">{v.name}</p>
-                                <p className="text-neutral-500 text-xs">
-                                  Entrou em {new Date(v.joinedAt).toLocaleString('pt-BR')}
-                                </p>
+                              <div className="flex items-center gap-3">
+                                <span className="text-base font-bold text-neutral-500 w-6 text-center">
+                                  #{i + 1}
+                                </span>
+                                <div>
+                                  <p className="text-neutral-100 font-semibold">{v.name}</p>
+                                  <p className="text-neutral-500 text-xs">
+                                    Senha: <span className="font-mono text-neutral-400">{(v as any).password || '—'}</span>
+                                    {' · '}Entrou em {new Date(v.joinedAt).toLocaleString('pt-BR')}
+                                  </p>
+                                </div>
                               </div>
                               <button
                                 onClick={() => handleRemoveValidator(v.sessionId)}
