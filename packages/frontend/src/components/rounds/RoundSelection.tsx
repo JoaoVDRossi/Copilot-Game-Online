@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { getCurrentTeamStats, saveTeam, getCurrentTeam } from '../../utils/teamsManager'
 import { getCurrentTeamRoundProgress } from '../../utils/roundProgressManager'
 import { getCurrentPlayer, getRoomById, getCurrentRoom } from '../../utils/roomManager'
+import { roomsApi } from '../../utils/apiClient'
 
 const roundsBase = [
   {
@@ -92,27 +93,38 @@ export default function RoundSelection() {
       setTeamName(currentTeam.name)
     }
     
-    // Count teams in current room
+    // Count teams in current room + check room status from Azure
     const player = getCurrentPlayer()
     if (player) {
       setPlayerName(player.name)
-      const room = getRoomById(player.roomId)
-      setActivePlayers(room?.teams.length || 0)
+      try {
+        const rooms: any[] = await roomsApi.getAll()
+        const liveRoom = rooms.find((r: any) => r.id === player.roomId)
+        if (liveRoom) {
+          setActivePlayers(liveRoom.teams.length || 0)
+          if (liveRoom.status === 'finished') {
+            alert('\u26a0\ufe0f A sala foi encerrada pelo Game Master!')
+            navigate('/')
+            return
+          }
+          setGameFinished(liveRoom.status === 'finished')
+        } else {
+          setActivePlayers(0)
+        }
+      } catch (_) {
+        // Fallback to localStorage
+        const room = getRoomById(player.roomId)
+        setActivePlayers(room?.teams.length || 0)
+        const currentRoom = getCurrentRoom()
+        if (currentRoom) {
+          const freshRoom = getRoomById(currentRoom.id)
+          setGameFinished(freshRoom?.status === 'finished' || false)
+        }
+      }
     } else {
       setActivePlayers(0)
     }
     setTeamStats(getCurrentTeamStats())
-    
-    // Check game state for THIS room
-    const currentRoom = getCurrentRoom()
-    if (currentRoom) {
-      // Re-fetch room from storage to get latest status
-      const freshRoom = getRoomById(currentRoom.id)
-      const isFinished = freshRoom?.status === 'finished'
-      setGameFinished(isFinished)
-    } else {
-      setGameFinished(false)
-    }
     
     // Load round progress
     const roundProgress = getCurrentTeamRoundProgress()

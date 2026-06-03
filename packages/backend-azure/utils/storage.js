@@ -430,7 +430,8 @@ async function createRoom(room) {
     teams: typeof room.teams === "string" ? room.teams : JSON.stringify(room.teams || []),
     createdAt: room.createdAt || new Date().toISOString(),
     startedAt: room.startedAt || "",
-    finishedAt: room.finishedAt || ""
+    finishedAt: room.finishedAt || "",
+    matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}")
   };
   
   await client.createEntity(entity);
@@ -456,7 +457,8 @@ async function getAllRooms() {
       teams: JSON.parse(entity.teams || "[]"),
       createdAt: entity.createdAt,
       startedAt: entity.startedAt || "",
-      finishedAt: entity.finishedAt || ""
+      finishedAt: entity.finishedAt || "",
+      matchesPerRound: JSON.parse(entity.matchesPerRound || "{}")
     });
   }
   
@@ -465,7 +467,8 @@ async function getAllRooms() {
 
 async function getRoomByCode(code) {
   const rooms = await getAllRooms();
-  return rooms.find(r => r.code === code) || null;
+  const searchCode = String(code).trim();
+  return rooms.find(r => String(r.code).trim() === searchCode) || null;
 }
 
 async function updateRoom(room) {
@@ -484,6 +487,7 @@ async function updateRoom(room) {
     createdAt: room.createdAt,
     startedAt: room.startedAt || "",
     finishedAt: room.finishedAt || "",
+    matchesPerRound: typeof room.matchesPerRound === "object" ? JSON.stringify(room.matchesPerRound || {}) : (room.matchesPerRound || "{}"),
     updatedAt: new Date().toISOString()
   };
   

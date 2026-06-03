@@ -6,6 +6,7 @@ import { fetchActiveSession, startRoundSession, stopRoundSession, formatTime, st
 import { useNavigate } from 'react-router-dom'
 import { getAuthSession, clearAuthSession } from '../../utils/authManager'
 import { getRoomsByCreator } from '../../utils/roomManager'
+import { roomsApi } from '../../utils/apiClient'
 import { RoundSession, Card } from '../../types'
 import {
   getAllCards,
@@ -36,6 +37,7 @@ export default function GameMasterDashboard() {
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
   const [isGameFinishedState, setIsGameFinishedState] = useState(false)
+  const [leaderboardTeams, setLeaderboardTeams] = useState<{ name: string; score: number; roomName: string; completedRounds: string[]; currentRound?: string }[]>([])
 
   // Session control
   const [activeSession, setActiveSession] = useState<RoundSession | null>(null)
@@ -84,10 +86,26 @@ export default function GameMasterDashboard() {
       if (s?.id !== activeSession?.id) {
         setActiveSession(s)
       }
-      // Check if any of this GM's rooms are finished
-      const myRooms = getRoomsByCreator(gmId)
-      const anyFinished = myRooms.length > 0 && myRooms.every(r => r.status === 'finished')
-      setIsGameFinishedState(anyFinished)
+      // Check rooms from Azure for finished state and leaderboard
+      try {
+        const allRooms: any[] = await roomsApi.getAll()
+        const myRoomsFromApi = allRooms.filter((r: any) => r.createdBy === gmId)
+        const anyFinished = myRoomsFromApi.length > 0 && myRoomsFromApi.every((r: any) => r.status === 'finished')
+        setIsGameFinishedState(anyFinished)
+        // Build leaderboard from room teams (sorted by score desc)
+        const teams: { name: string; score: number; roomName: string; completedRounds: string[]; currentRound?: string }[] = []
+        myRoomsFromApi.forEach((room: any) => {
+          ;(room.teams || []).forEach((t: any) => {
+            teams.push({ name: t.name, score: t.score || 0, roomName: room.name, completedRounds: t.completedRounds || [], currentRound: t.currentRound })
+          })
+        })
+        setLeaderboardTeams(teams.sort((a, b) => b.score - a.score))
+      } catch (e) {
+        // Fallback to localStorage
+        const myRooms = getRoomsByCreator(gmId)
+        const anyFinished = myRooms.length > 0 && myRooms.every(r => r.status === 'finished')
+        setIsGameFinishedState(anyFinished)
+      }
     }
     updateState()
     const interval = setInterval(updateState, 5000)
@@ -544,40 +562,35 @@ export default function GameMasterDashboard() {
           </div>
         )}
 
-        {/* Leaderboard Tab */}
         {activeTab === 'leaderboard' && (
           <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
             <h3 className="font-display text-xl font-bold text-neutral-50 mb-4 flex items-center gap-2">
               <Trophy className="w-6 h-6 text-yellow-400" />
               Classificação — Minhas Salas
             </h3>
-            {(() => {
-              const teams = getMyTeams()
-              if (teams.length === 0) {
-                return <p className="text-neutral-500">Nenhum time nas suas salas ainda.</p>
-              }
-              return (
-                <div className="space-y-2">
-                  {teams.map((team, i) => (
-                    <div key={`${team.name}-${team.roomName}`} className="flex items-center justify-between bg-bg-tertiary rounded-lg p-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-neutral-500 w-8 text-center">
-                          {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                        </span>
-                        <div>
-                          <p className="font-semibold text-neutral-200">{team.name}</p>
-                          <p className="text-xs text-neutral-500">
-                            Sala: {team.roomName} • {team.completedRounds.length}/4 rounds
-                            {team.currentRound && ` • ${rounds.find(r => r.id === team.currentRound)?.name || team.currentRound}`}
-                          </p>
-                        </div>
+            {leaderboardTeams.length === 0 ? (
+              <p className="text-neutral-500">Nenhum time nas suas salas ainda.</p>
+            ) : (
+              <div className="space-y-2">
+                {leaderboardTeams.map((team, i) => (
+                  <div key={`${team.name}-${team.roomName}`} className="flex items-center justify-between bg-bg-tertiary rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-bold text-neutral-500 w-8 text-center">
+                        {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-neutral-200">{team.name}</p>
+                        <p className="text-xs text-neutral-500">
+                          Sala: {team.roomName} • {team.completedRounds.length}/4 rounds
+                          {team.currentRound && ` • ${rounds.find(r => r.id === team.currentRound)?.name || team.currentRound}`}
+                        </p>
                       </div>
-                      <span className="font-mono font-bold text-energy-primary text-lg">{team.score} pts</span>
                     </div>
-                  ))}
-                </div>
-              )
-            })()}
+                    <span className="font-mono font-bold text-energy-primary text-lg">{team.score} pts</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

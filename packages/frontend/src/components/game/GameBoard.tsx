@@ -11,6 +11,7 @@ import { addPointsToCurrentTeam, markRoundCompleted, getCurrentTeam } from '../.
 import { addPointsToRound, startRound, completeRound } from '../../utils/roundProgressManager'
 import { addMatchToHistory, getTeamRoundMatches } from '../../utils/matchHistoryManager'
 import { getCurrentPlayer, updateTeamScore, markTeamRoundCompleted, updateTeamCurrentRound, getCurrentRoom, getRoomById } from '../../utils/roomManager'
+import { roomsApi, matchesApi } from '../../utils/apiClient'
 
 // Fisher-Yates shuffle (returns a new shuffled array)
 const shuffle = <T,>(arr: T[]): T[] => {
@@ -93,21 +94,31 @@ export default function GameBoard() {
     
     checkSession()
     
-    // Update timer every second + check session every 10s
+    // Update timer every second + check session every 5s
     let tick = 0
     const interval = setInterval(async () => {
       tick++
-      // Full session check every 10 seconds
-      if (tick % 10 === 0) {
+      // Full session + room check every 5 seconds
+      if (tick % 5 === 0) {
         const session = await fetchActiveSession(roomGmId)
         if (!session || session.roundId !== roundId || !session.active) {
           console.log('🛑 [SESSION CHECK] Round stopped by admin')
-          alert('Round finalizado pelo Admin!')
+          alert('⚠️ Round finalizado pelo Game Master!')
           navigate('/rounds')
           return
         }
         setTimerVisible(session.timerVisible !== false)
         setTimerSeconds(getRemainingTime(session))
+        // Check if room was closed by GM
+        try {
+          const allRooms = await roomsApi.getAll()
+          const currentRoomFromApi = allRooms.find((r: any) => r.id === room?.id)
+          if (currentRoomFromApi?.status === 'finished') {
+            alert('⚠️ A sala foi encerrada pelo Game Master!')
+            navigate('/')
+            return
+          }
+        } catch (_) { /* ignore */ }
       } else {
         // Simple decrement between full checks
         setTimerSeconds(prev => prev !== null && prev > 0 ? prev - 1 : prev)
@@ -208,7 +219,7 @@ export default function GameBoard() {
     card => visibleDifficulties.includes(card.difficulty) && !completedCardIds.useCases.has(card.id)
   )
   const availableToolCards = allToolCards.filter(
-    card => visibleDifficulties.includes(card.difficulty) && !completedCardIds.tools.has(card.id)
+    card => visibleDifficulties.includes(card.difficulty)
   )
 
   // Memoize displayed cards — only re-shuffle after a match (shuffleSeed changes)
@@ -236,7 +247,7 @@ export default function GameBoard() {
     }))
   }
 
-  const handleValidateMatch = () => {
+  const handleValidateMatch = async () => {
     const { prompt, useCase, tool } = selectedCards
 
     if (!prompt || !useCase || !tool) {
@@ -277,6 +288,16 @@ export default function GameBoard() {
       const player = getCurrentPlayer()
       if (player) {
         updateTeamScore(player.roomId, player.teamId, pointsEarned)
+        // Sync to Azure (fire-and-forget)
+        roomsApi.getAll().then((allRooms: any[]) => {
+          const azureRoom = allRooms.find((r: any) => r.id === player.roomId)
+          if (azureRoom) {
+            const updatedTeams = azureRoom.teams.map((t: any) =>
+              t.id === player.teamId ? { ...t, score: (t.score || 0) + pointsEarned } : t
+            )
+            roomsApi.update({ ...azureRoom, teams: updatedTeams }).catch(console.error)
+          }
+        }).catch(console.error)
       }
       
       // Add points to round progress
@@ -292,6 +313,18 @@ export default function GameBoard() {
           useCase,
           tool
         )
+        // Also save to Azure for GM dashboard
+        matchesApi.create({
+          id: `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          teamId: currentTeam.id,
+          teamName: currentTeam.name,
+          roundId: roundId!,
+          promptCardId: prompt,
+          useCaseCardId: useCase,
+          toolCardId: tool,
+          timestamp: new Date().toISOString(),
+          tested: false,
+        }).catch(console.error)
       }
       
       // Check round completion: use room's match limit if set, else require all rules
@@ -299,8 +332,7 @@ export default function GameBoard() {
       const roundRules = allRules.filter(r => r.roundId === roundId && r.active)
       
       const room = getCurrentRoom()
-      const freshRoom = room ? getRoomById(room.id) : null
-      const roomMatchLimit = freshRoom?.matchesPerRound?.[roundId!]
+      const roomMatchLimit = room?.matchesPerRound?.[roundId!]
       const targetMatches = (roomMatchLimit && roomMatchLimit > 0) ? roomMatchLimit : roundRules.length
       
       const isRoundCompleted = newCompletedKeys.size >= targetMatches
@@ -323,6 +355,18 @@ export default function GameBoard() {
         const player = getCurrentPlayer()
         if (player) {
           markTeamRoundCompleted(player.roomId, player.teamId, roundId!)
+          // Sync to Azure
+          roomsApi.getAll().then((allRooms: any[]) => {
+            const azureRoom = allRooms.find((r: any) => r.id === player.roomId)
+            if (azureRoom) {
+              const updatedTeams = azureRoom.teams.map((t: any) =>
+                t.id === player.teamId
+                  ? { ...t, completedRounds: [...new Set([...(t.completedRounds || []), roundId!])] }
+                  : t
+              )
+              roomsApi.update({ ...azureRoom, teams: updatedTeams }).catch(console.error)
+            }
+          }).catch(console.error)
         }
       }
       
