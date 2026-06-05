@@ -19,30 +19,45 @@ export default function MyMatches() {
   const [testImage, setTestImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Compresses image to JPEG ≤ 45KB to fit Azure Table Storage 64KB property limit
+  // Compresses image to JPEG safely under Azure Table Storage 64KB string limit
   const compressImage = (dataUrl: string): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image()
+      img.onerror = () => reject(new Error('Falha ao carregar imagem'))
       img.onload = () => {
-        const MAX_WIDTH = 640
-        let width = img.width
-        let height = img.height
-        if (width > MAX_WIDTH) {
-          height = Math.round(height * MAX_WIDTH / width)
-          width = MAX_WIDTH
+        // Helper: compress at given pixel dimensions, returns base64 string
+        const tryCompress = (maxDim: number): string => {
+          let width = img.width
+          let height = img.height
+          // Scale down proportionally so the longest side fits within maxDim
+          if (width >= height) {
+            if (width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim }
+          } else {
+            if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim }
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, width, height)
+          // Iterate quality from 0.5 down to 0.05 until result fits
+          const THRESHOLD = 38000 // ~28KB — safely under Azure's 64KB UTF-8 string limit
+          let quality = 0.5
+          let result = canvas.toDataURL('image/jpeg', quality)
+          while (result.length > THRESHOLD && quality > 0.05) {
+            quality = Math.round((quality - 0.05) * 100) / 100
+            result = canvas.toDataURL('image/jpeg', quality)
+          }
+          return result
         }
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, width, height)
-        // Try reducing quality until base64 string fits under ~45KB
-        let quality = 0.6
-        let result = canvas.toDataURL('image/jpeg', quality)
-        while (result.length > 45000 && quality > 0.1) {
-          quality -= 0.1
-          result = canvas.toDataURL('image/jpeg', quality)
-        }
+
+        // Pass 1: scale longest side to 480px
+        let result = tryCompress(480)
+        // Pass 2: if still too large, halve to 240px
+        if (result.length > 38000) result = tryCompress(240)
+        // Pass 3: last resort 120px
+        if (result.length > 38000) result = tryCompress(120)
+
         resolve(result)
       }
       img.src = dataUrl
@@ -121,7 +136,7 @@ export default function MyMatches() {
     setTestImage(null)
   }
 
-  const handleConfirmTest = () => {
+  const handleConfirmTest = async () => {
     if (!selectedMatchForTest) return
     
     if (!testImage) {
@@ -146,7 +161,7 @@ export default function MyMatches() {
     })
 
     // Submit to validation queue with image
-    submitTestValidation(
+    const success = await submitTestValidation(
       match.id,
       match.teamId,
       match.teamName,
@@ -156,6 +171,11 @@ export default function MyMatches() {
       testImage,
       getCurrentRoom()?.id  // pass roomId so GM can filter by room
     )
+
+    if (!success) {
+      alert('❌ Erro ao enviar o teste. Tente novamente.\n\nSe o problema persistir, tente usar uma imagem menor.')
+      return
+    }
 
     // Mark as tested in history
     markMatchAsTested(match.id)
@@ -170,7 +190,8 @@ export default function MyMatches() {
     setTestImage(null)
 
     // Reload validations to show the new pending test
-    getAllTestValidations().then(v => setValidations(v))
+    const updated = await getAllTestValidations()
+    setValidations(updated)
 
     alert('✅ Teste enviado para validação!\n\nO facilitador verificará sua implementação.')
   }
@@ -290,7 +311,13 @@ export default function MyMatches() {
               return (
                 <div
                   key={match.id}
-                  className="bg-bg-secondary rounded-xl p-6 border border-white/10 hover:border-battle-green/50 transition-colors"
+                  className={`bg-bg-secondary rounded-xl p-6 border transition-colors ${
+                    getMatchRejection(match.id)
+                      ? 'border-battle-red/70 hover:border-battle-red'
+                      : isMatchValidated(match.id)
+                        ? 'border-battle-purple/50 hover:border-battle-purple'
+                        : 'border-white/10 hover:border-battle-green/50'
+                  }`}
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between mb-4">

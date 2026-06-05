@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Zap, Trophy, AlertCircle, Clock } from 'lucide-react'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { rounds, villains } from '../../data/mockData'
 import { getCardsByRoundTypeAndArea, validateMatch, getAllMatchRules } from '../../utils/cardManager'
 import PlayingCard from './PlayingCard'
@@ -100,8 +100,8 @@ export default function GameBoard() {
     let tick = 0
     const interval = setInterval(async () => {
       tick++
-      // Full session + room check every 5 seconds
-      if (tick % 5 === 0) {
+      // Full session + room check every 3 seconds (keeps pause detection fast)
+      if (tick % 3 === 0) {
         const session = await fetchActiveSession(roomGmId, room?.id)
         if (!session || session.roundId !== roundId || !session.active) {
           console.log('🛑 [SESSION CHECK] Round stopped by admin')

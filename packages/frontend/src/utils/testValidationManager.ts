@@ -64,7 +64,7 @@ export const submitTestValidation = async (
   useCaseTitle: string,
   imageUrl?: string,
   roomId?: string
-): Promise<void> => {
+): Promise<boolean> => {
   const newValidation: TestValidation = {
     id: `validation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     matchId,
@@ -82,9 +82,10 @@ export const submitTestValidation = async (
   if (USE_API) {
     try {
       await validationsApi.create(newValidation)
-      return
+      return true
     } catch (error) {
       console.error('Error submitting validation:', error)
+      return false
     }
   }
   
@@ -100,6 +101,7 @@ export const submitTestValidation = async (
     validations.push(newValidation)
     saveTestValidations(validations)
   }
+  return true
 }
 
 // Get pending validations (not yet validated)
