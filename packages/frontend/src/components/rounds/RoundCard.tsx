@@ -31,7 +31,7 @@ export default function RoundCard({ round, gameFinished = false }: RoundCardProp
     const checkSession = async () => {
       try {
         const room = getCurrentRoom()
-        const activeSession = await fetchActiveSession(room?.createdBy)
+        const activeSession = await fetchActiveSession(room?.createdBy, room?.id)
         console.log(`🎯 [PLAYER] Round ${round.id} checking session:`, {
           hasSession: !!activeSession,
           sessionRoundId: activeSession?.roundId,
