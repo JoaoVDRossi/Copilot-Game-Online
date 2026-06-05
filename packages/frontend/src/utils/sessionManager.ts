@@ -12,10 +12,10 @@ const filterByGm = (sessions: RoundSession[], gmId?: string): RoundSession[] => 
   return sessions.filter(s => s.gmId === gmId)
 }
 
-// Helper: filter sessions by roomId (if session has no roomId, it matches any room for backward compat)
+// Helper: filter sessions by roomId (strict — sessions without roomId do NOT match)
 const filterByRoom = (sessions: RoundSession[], roomId?: string): RoundSession[] => {
   if (!roomId) return sessions
-  return sessions.filter(s => !s.roomId || s.roomId === roomId)
+  return sessions.filter(s => s.roomId === roomId)
 }
 
 // Get current active session (sync - uses cached value when using API)
@@ -54,7 +54,8 @@ export const fetchActiveSession = async (gmId?: string, roomId?: string): Promis
     const sessions: RoundSession[] = await sessionsApi.getAll()
     console.log('📦 [SESSION] Received sessions from API:', sessions.length, sessions)
     
-    const active = filterByGm(sessions, gmId).find((s: RoundSession) => s.active)
+    // Filter strictly by roomId first, then by gmId — prevents cross-room leakage
+    const active = filterByRoom(filterByGm(sessions, gmId), roomId).find((s: RoundSession) => s.active)
     
     if (!active) {
       console.log('⚠️ [SESSION] No active session found')
