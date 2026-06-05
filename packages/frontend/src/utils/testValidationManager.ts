@@ -1,7 +1,7 @@
 // Test Validation Queue - Manages test validation requests from players
 
 import { getAllTeams, saveTeam } from './teamsManager'
-import { validationsApi } from './apiClient'
+import { validationsApi, roomsApi } from './apiClient'
 import { getAllRooms, updateRoom } from './roomManager'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
@@ -125,6 +125,20 @@ export const markValidationCompleted = async (validationId: string, validatedBy:
           validatedAt: new Date().toISOString(),
           validatedBy,
         })
+        // Add +10 points to the team inside the room (leaderboard)
+        try {
+          const allRooms = await roomsApi.getAll()
+          for (const room of allRooms) {
+            const teamInRoom = (room.teams || []).find((t: any) => t.id === validation.teamId)
+            if (teamInRoom) {
+              teamInRoom.score = (teamInRoom.score || 0) + 10
+              await roomsApi.update(room)
+              break
+            }
+          }
+        } catch (err) {
+          console.error('Error adding +10 points to room team:', err)
+        }
       }
       return
     } catch (error) {

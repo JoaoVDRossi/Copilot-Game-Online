@@ -76,6 +76,13 @@ export default function MyMatches() {
     setMatches(history)
     setCards(getAllCards())
     getAllTestValidations().then(v => setValidations(v))
+
+    // Poll validations every 5 seconds so player sees rejection/approval without refresh
+    const pollInterval = setInterval(() => {
+      getAllTestValidations().then(v => setValidations(v))
+    }, 5000)
+
+    return () => clearInterval(pollInterval)
   }, [navigate])
 
   const getCardById = (cardId: string): Card | undefined => {
@@ -343,23 +350,23 @@ export default function MyMatches() {
                         return (
                           <div className="flex items-center gap-2 px-4 py-2 bg-battle-red/20 border border-battle-red/50 rounded-lg">
                             <XCircle className="w-5 h-5 text-battle-red" />
-                            <span className="text-sm font-bold text-battle-red">Teste Rejeitado</span>
+                            <span className="text-sm font-bold text-battle-red">Match Invalidado</span>
                           </div>
                         )
                       }
                       if (isMatchValidated(match.id)) {
                         return (
-                          <div className="flex items-center gap-2 px-4 py-2 bg-battle-purple/20 border border-battle-purple/50 rounded-lg">
-                            <Award className="w-5 h-5 text-battle-purple" />
-                            <span className="text-sm font-bold text-battle-purple">Validado +10 pts</span>
+                          <div className="flex items-center gap-2 px-4 py-2 bg-battle-green/20 border border-battle-green/50 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-battle-green" />
+                            <span className="text-sm font-bold text-battle-green">Match Validado ✓</span>
                           </div>
                         )
                       }
                       if (match.tested) {
                         return (
-                          <div className="flex items-center gap-2 text-battle-green">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="text-sm font-semibold">Enviado para Validação</span>
+                          <div className="flex items-center gap-2 text-battle-blue">
+                            <Clock className="w-5 h-5" />
+                            <span className="text-sm font-semibold">Aguardando Validação</span>
                           </div>
                         )
                       }
@@ -413,112 +420,125 @@ export default function MyMatches() {
                     </div>
                   </div>
 
-                  {/* Rejection Feedback */}
-                  {(() => {
-                    const rejection = getMatchRejection(match.id)
-                    if (rejection) {
-                      return (
-                        <div className="mb-4 bg-battle-red/10 border-l-4 border-battle-red rounded-lg p-4">
-                          <div className="flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-battle-red flex-shrink-0 mt-0.5" />
-                            <div>
-                              <h4 className="text-sm font-bold text-battle-red mb-2">Feedback do Avaliador:</h4>
-                              <p className="text-sm text-neutral-300">{rejection.rejectionReason}</p>
-                              <p className="text-xs text-neutral-500 mt-2">
-                                Rejeitado em: {new Date(rejection.rejectedAt!).toLocaleString('pt-BR')}
-                              </p>
+                  {/* Status / Feedback / Action area */}
+                  <div className="mt-2">
+                    {(() => {
+                      const rejection = getMatchRejection(match.id)
+
+                      // ── REJECTED ─────────────────────────────────────────
+                      if (rejection) {
+                        return (
+                          <div className="bg-battle-red/10 border border-battle-red/40 rounded-lg p-4 flex items-start gap-3">
+                            <XCircle className="w-5 h-5 text-battle-red flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-battle-red mb-1">❌ Match Invalidado</p>
+                              <p className="text-sm text-neutral-200">{rejection.rejectionReason}</p>
+                              {rejection.rejectedAt && (
+                                <p className="text-xs text-neutral-500 mt-1">
+                                  Avaliado em {new Date(rejection.rejectedAt).toLocaleString('pt-BR')}
+                                </p>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
+                        )
+                      }
 
-                  {/* Action Button */}
-                  <div className="flex justify-end">
-                    {getMatchRejection(match.id) ? (
-                      <button
-                        onClick={() => handleTestSubmit(match)}
-                        className="px-6 py-2 bg-battle-blue hover:bg-battle-blue/90 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Enviar Novo Teste
-                      </button>
-                    ) : isMatchValidated(match.id) ? (
-                      <div className="px-6 py-2 bg-battle-purple/10 border border-battle-purple/30 text-battle-purple rounded-lg text-sm font-semibold cursor-not-allowed flex items-center gap-2">
-                        <Award className="w-4 h-4" />
-                        ✓ Validado (+10 pontos)
-                      </div>
-                    ) : match.tested ? (
-                      <div className="px-6 py-2 bg-battle-green/10 border border-battle-green/30 text-battle-green rounded-lg text-sm font-semibold cursor-not-allowed">
-                        ✓ Teste Enviado
-                      </div>
-                    ) : selectedMatchForTest === match.id ? (
-                      <div className="w-full space-y-4">
-                        {/* Image Upload */}
-                        <div className="bg-bg-primary rounded-lg p-4 border-2 border-dashed border-battle-blue/50">
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageSelect}
-                            className="hidden"
-                          />
-                          {testImage ? (
-                            <div className="space-y-3">
-                              <img
-                                src={testImage}
-                                alt="Preview do teste"
-                                className="w-full max-h-64 object-contain rounded-lg"
+                      // ── VALIDATED ────────────────────────────────────────
+                      if (isMatchValidated(match.id)) {
+                        return (
+                          <div className="bg-battle-green/10 border border-battle-green/40 rounded-lg p-4 flex items-center gap-3">
+                            <CheckCircle className="w-5 h-5 text-battle-green flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-bold text-battle-green">🎉 Parabéns, seu match foi validado!</p>
+                              <p className="text-xs text-neutral-400 mt-0.5">+10 pontos adicionados ao seu time</p>
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      // ── AWAITING VALIDATION ───────────────────────────────
+                      if (match.tested) {
+                        return (
+                          <div className="flex justify-end">
+                            <div className="px-6 py-2 bg-battle-blue/10 border border-battle-blue/30 text-battle-blue rounded-lg text-sm font-semibold flex items-center gap-2 cursor-not-allowed">
+                              <Clock className="w-4 h-4" />
+                              Aguardando Validação
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      // ── IMAGE UPLOAD (selecting test) ─────────────────────
+                      if (selectedMatchForTest === match.id) {
+                        return (
+                          <div className="w-full space-y-4">
+                            <div className="bg-bg-primary rounded-lg p-4 border-2 border-dashed border-battle-blue/50">
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageSelect}
+                                className="hidden"
                               />
+                              {testImage ? (
+                                <div className="space-y-3">
+                                  <img
+                                    src={testImage}
+                                    alt="Preview do teste"
+                                    className="w-full max-h-64 object-contain rounded-lg"
+                                  />
+                                  <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                                  >
+                                    <Upload className="w-4 h-4" />
+                                    Trocar Imagem
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="w-full py-8 text-neutral-400 hover:text-battle-blue transition-colors flex flex-col items-center gap-2"
+                                >
+                                  <ImageIcon className="w-12 h-12" />
+                                  <span className="text-sm font-medium">Clique para selecionar a imagem do teste</span>
+                                  <span className="text-xs text-neutral-500">PNG, JPG ou GIF (máx. 5MB)</span>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex gap-3">
                               <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                                onClick={handleCancelTest}
+                                className="flex-1 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-semibold transition-colors"
                               >
-                                <Upload className="w-4 h-4" />
-                                Trocar Imagem
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={handleConfirmTest}
+                                disabled={!testImage}
+                                className="flex-1 px-4 py-2 bg-battle-green hover:bg-battle-green/90 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                Enviar Teste
                               </button>
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="w-full py-8 text-neutral-400 hover:text-battle-blue transition-colors flex flex-col items-center gap-2"
-                            >
-                              <ImageIcon className="w-12 h-12" />
-                              <span className="text-sm font-medium">Clique para selecionar a imagem do teste</span>
-                              <span className="text-xs text-neutral-500">PNG, JPG ou GIF (máx. 5MB)</span>
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex gap-3">
+                          </div>
+                        )
+                      }
+
+                      // ── NOT YET SUBMITTED ─────────────────────────────────
+                      return (
+                        <div className="flex justify-end">
                           <button
-                            onClick={handleCancelTest}
-                            className="flex-1 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            onClick={handleConfirmTest}
-                            disabled={!testImage}
-                            className="flex-1 px-4 py-2 bg-battle-green hover:bg-battle-green/90 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                            onClick={() => handleTestSubmit(match)}
+                            className="px-6 py-2 bg-battle-blue hover:bg-battle-blue/90 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Enviar Teste
+                            Testei o Caso de Uso
                           </button>
                         </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleTestSubmit(match)}
-                        className="px-6 py-2 bg-battle-blue hover:bg-battle-blue/90 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Testei o Caso de Uso
-                      </button>
-                    )}
+                      )
+                    })()}
                   </div>
                 </div>
               )
