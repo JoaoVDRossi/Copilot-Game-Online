@@ -63,6 +63,7 @@ export default function GameBoard() {
   const [visibleDifficulties] = useState<DifficultyLevel[]>(['easy', 'medium', 'hard'])
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [timerVisible, setTimerVisible] = useState(false)
+  const isPausedRef = useRef(false)
 
   // Session check + live timer for player
   useEffect(() => {
@@ -82,6 +83,7 @@ export default function GameBoard() {
       
       console.log('✅ [SESSION CHECK] Round is active, player can play')
       setTimerVisible(session.timerVisible !== false)
+      isPausedRef.current = session.paused ?? false
       setTimerSeconds(getRemainingTime(session))
       startRound(roundId!)
       
@@ -108,6 +110,7 @@ export default function GameBoard() {
           return
         }
         setTimerVisible(session.timerVisible !== false)
+        isPausedRef.current = session.paused ?? false
         setTimerSeconds(getRemainingTime(session))
         // Check if room was closed by GM
         try {
@@ -120,8 +123,10 @@ export default function GameBoard() {
           }
         } catch (_) { /* ignore */ }
       } else {
-        // Simple decrement between full checks
-        setTimerSeconds(prev => prev !== null && prev > 0 ? prev - 1 : prev)
+        // Simple decrement between full checks — only when NOT paused
+        if (!isPausedRef.current) {
+          setTimerSeconds(prev => prev !== null && prev > 0 ? prev - 1 : prev)
+        }
       }
     }, 1000)
     

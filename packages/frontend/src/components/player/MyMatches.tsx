@@ -19,6 +19,36 @@ export default function MyMatches() {
   const [testImage, setTestImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Compresses image to JPEG ≤ 45KB to fit Azure Table Storage 64KB property limit
+  const compressImage = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX_WIDTH = 640
+        let width = img.width
+        let height = img.height
+        if (width > MAX_WIDTH) {
+          height = Math.round(height * MAX_WIDTH / width)
+          width = MAX_WIDTH
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        // Try reducing quality until base64 string fits under ~45KB
+        let quality = 0.6
+        let result = canvas.toDataURL('image/jpeg', quality)
+        while (result.length > 45000 && quality > 0.1) {
+          quality -= 0.1
+          result = canvas.toDataURL('image/jpeg', quality)
+        }
+        resolve(result)
+      }
+      img.src = dataUrl
+    })
+  }
+
   useEffect(() => {
     const currentTeam = getCurrentTeam()
     if (!currentTeam) {
@@ -61,10 +91,11 @@ export default function MyMatches() {
       return
     }
 
-    // Convert to base64
+    // Convert to base64 and compress to fit Azure Table Storage limits
     const reader = new FileReader()
-    reader.onloadend = () => {
-      setTestImage(reader.result as string)
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result as string)
+      setTestImage(compressed)
     }
     reader.readAsDataURL(file)
   }
