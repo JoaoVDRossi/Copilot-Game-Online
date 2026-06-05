@@ -6,10 +6,7 @@ module.exports = async function (context, req) {
     try {
         const validations = await getAllValidations();
         
-        // Get only pending validations (not yet validated)
-        const pending = validations.filter(v => !v.validated);
-        
-        context.log('[GetValidations] Pending validations:', pending.length);
+        context.log('[GetValidations] Total validations:', validations.length);
         
         context.res = {
             status: 200,
@@ -17,7 +14,7 @@ module.exports = async function (context, req) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            body: JSON.stringify(pending)
+            body: JSON.stringify(validations)
         };
     } catch (error) {
         context.log.error('[GetValidations] Error:', error.message);

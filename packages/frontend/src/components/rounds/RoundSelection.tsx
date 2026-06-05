@@ -108,6 +108,15 @@ export default function RoundSelection() {
             return
           }
           setGameFinished(liveRoom.status === 'finished')
+          // Sync score from Azure room — picks up +10 pts from match validation
+          const currentTeamLocal = getCurrentTeam()
+          if (currentTeamLocal) {
+            const teamInRoom = (liveRoom.teams || []).find((t: any) => t.id === currentTeamLocal.id)
+            if (teamInRoom && teamInRoom.score !== undefined && teamInRoom.score !== currentTeamLocal.score) {
+              const synced = { ...currentTeamLocal, score: teamInRoom.score }
+              localStorage.setItem('current-team', JSON.stringify(synced))
+            }
+          }
         } else {
           setActivePlayers(0)
         }
