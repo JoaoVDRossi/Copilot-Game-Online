@@ -302,9 +302,6 @@ export default function ValidatorDashboard() {
             </div>
           </div>
         )}
-            </div>
-          </div>
-        )}
 
         {/* Validation Tab */}
         {activeTab === 'validation' && (
