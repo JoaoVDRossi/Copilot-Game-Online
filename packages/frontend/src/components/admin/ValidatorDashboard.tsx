@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, X, Target, Trophy, LogOut, Play, Square, Shield } from 'lucide-react'
+import { CheckCircle, X, Target, Trophy, LogOut, Clock, Shield } from 'lucide-react'
 import { getValidatorSession, clearValidatorSession } from '../../utils/authManager'
 import {
   fetchActiveSession,
-  startRoundSession,
-  stopRoundSession,
+  getRemainingTime,
+  formatTime,
 } from '../../utils/sessionManager'
 import {
   getPendingValidations,
@@ -31,11 +31,11 @@ export default function ValidatorDashboard() {
 
   const [activeTab, setActiveTab] = useState<Tab>('session')
   const [activeSession, setActiveSession] = useState<RoundSession | null>(null)
+  const [timerSeconds, setTimerSeconds] = useState<number>(0)
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
   const [room, setRoom] = useState<any | null>(null)
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
-  const [isStarting, setIsStarting] = useState(false)
-  const [isStopping, setIsStopping] = useState(false)
 
   useEffect(() => {
     if (!validatorSession) {
@@ -56,6 +56,12 @@ export default function ValidatorDashboard() {
         roomsApi.getAll(),
       ])
       setActiveSession(session)
+      // Update timer from session
+      if (session) {
+        setTimerSeconds(getRemainingTime(session))
+      } else {
+        setTimerSeconds(0)
+      }
       const currentRoom = rooms.find((r: any) => r.id === validatorSession.roomId)
       setRoom(currentRoom || null)
 
@@ -86,31 +92,16 @@ export default function ValidatorDashboard() {
     }
   }
 
-  const handleStartRound = async (roundId: string) => {
-    if (!validatorSession) return
-    setIsStarting(true)
-    try {
-      await startRoundSession(roundId, 15, validatorSession.gmId, validatorSession.roomId)
-      await loadData()
-    } catch (err) {
-      alert('Erro ao iniciar round.')
-    } finally {
-      setIsStarting(false)
+  // Local timer countdown (purely visual, syncs from Azure every 5s)
+  useEffect(() => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    if (activeSession && !activeSession.paused) {
+      timerIntervalRef.current = setInterval(() => {
+        setTimerSeconds(prev => (prev > 0 ? prev - 1 : 0))
+      }, 1000)
     }
-  }
-
-  const handleStopRound = async () => {
-    if (!activeSession || !validatorSession) return
-    setIsStopping(true)
-    try {
-      await stopRoundSession(activeSession.roundId, validatorSession.gmId, validatorSession.roomId)
-      await loadData()
-    } catch (err) {
-      alert('Erro ao parar round.')
-    } finally {
-      setIsStopping(false)
-    }
-  }
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current) }
+  }, [activeSession?.id, activeSession?.paused])
 
   const handleValidate = async (validationId: string) => {
     const validation = pendingValidations.find((v) => v.id === validationId)
@@ -195,21 +186,30 @@ export default function ValidatorDashboard() {
           <div className="space-y-4">
             {/* Active Session Banner */}
             {activeSession ? (
-              <div className="bg-battle-green/10 border border-battle-green/40 rounded-xl p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-battle-green font-semibold text-sm uppercase tracking-wider mb-1">Round Ativo</p>
-                  <p className="font-display font-bold text-neutral-50 text-lg">
-                    {ROUNDS.find((r) => r.id === activeSession.roundId)?.name || activeSession.roundId}
-                  </p>
+              <div className="bg-battle-green/10 border border-battle-green/40 rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-battle-green font-semibold text-sm uppercase tracking-wider mb-1">Round Ativo</p>
+                    <p className="font-display font-bold text-neutral-50 text-lg">
+                      {ROUNDS.find((r) => r.id === activeSession.roundId)?.name || activeSession.roundId}
+                    </p>
+                    {activeSession.paused && (
+                      <span className="text-xs font-bold text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded px-2 py-0.5 mt-1 inline-block">⏸ PAUSADO</span>
+                    )}
+                  </div>
+                  {/* Timer — read-only for validators */}
+                  <div className="text-right">
+                    <div className="flex items-center gap-2 text-sm text-neutral-400 mb-1 justify-end">
+                      <Clock className="w-4 h-4" />
+                      Tempo Restante
+                    </div>
+                    <div className={`font-mono text-4xl font-bold ${
+                      activeSession.paused ? 'text-yellow-400' : timerSeconds <= 60 ? 'text-battle-red animate-pulse' : 'text-battle-green'
+                    }`}>
+                      {formatTime(timerSeconds)}
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={handleStopRound}
-                  disabled={isStopping}
-                  className="flex items-center gap-2 bg-battle-red hover:bg-battle-red/90 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                >
-                  <Square className="w-4 h-4" />
-                  {isStopping ? 'Parando...' : 'Parar Round'}
-                </button>
               </div>
             ) : (
               <div className="bg-bg-secondary rounded-xl p-5 border border-neutral-700">
@@ -217,47 +217,35 @@ export default function ValidatorDashboard() {
               </div>
             )}
 
-            {/* Round List */}
+            {/* Round List — read-only, only Game Master can start/stop */}
             <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
-              <h3 className="font-display font-bold text-neutral-50 mb-4">Iniciar Round</h3>
+              <h3 className="font-display font-bold text-neutral-50 mb-4">Rounds da Sala</h3>
               <div className="space-y-3">
                 {ROUNDS.map((round) => {
                   const isActive = activeSession?.roundId === round.id
                   return (
                     <div
                       key={round.id}
-                      className={`flex items-center justify-between rounded-lg p-4 border transition-colors ${
-                        isActive
-                          ? 'bg-battle-green/10 border-battle-green/40'
-                          : 'bg-bg-tertiary border-neutral-700'
+                      className={`flex items-center justify-between rounded-lg p-4 border ${
+                        isActive ? 'bg-battle-green/10 border-battle-green/40' : 'bg-bg-tertiary border-neutral-700'
                       }`}
                     >
-                      <span className={`font-semibold text-sm ${isActive ? 'text-battle-green' : 'text-neutral-200'}`}>
+                      <span className={`font-semibold text-sm ${isActive ? 'text-battle-green' : 'text-neutral-400'}`}>
                         {round.name}
                       </span>
-                      {isActive ? (
+                      {isActive && (
                         <span className="text-xs font-semibold text-battle-green bg-battle-green/20 px-3 py-1 rounded-full">
                           Ativo
                         </span>
-                      ) : (
-                        <button
-                          onClick={() => handleStartRound(round.id)}
-                          disabled={isStarting || !!activeSession}
-                          className="flex items-center gap-2 px-4 py-2 bg-energy-primary/20 hover:bg-energy-primary/30 text-energy-primary border border-energy-primary/30 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <Play className="w-3 h-3" />
-                          {isStarting ? 'Iniciando...' : 'Iniciar'}
-                        </button>
                       )}
                     </div>
                   )
                 })}
               </div>
-              {!!activeSession && (
-                <p className="text-xs text-neutral-500 mt-3">
-                  Para iniciar outro round, pare o round atual primeiro.
-                </p>
-              )}
+              <p className="text-xs text-neutral-600 mt-3">Apenas o Game Master pode iniciar ou parar rounds.</p>
+            </div>
+          </div>
+        )}
             </div>
           </div>
         )}
