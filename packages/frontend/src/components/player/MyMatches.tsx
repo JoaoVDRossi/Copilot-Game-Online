@@ -25,7 +25,15 @@ export default function MyMatches() {
   const [validations, setValidations] = useState<any[]>([])
   const [selectedMatchForTest, setSelectedMatchForTest] = useState<string | null>(null)
   const [testImage, setTestImage] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(key)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
 
   // Compresses image to JPEG safely under Azure Table Storage 64KB string limit
   const compressImage = (dataUrl: string): Promise<string> => {
@@ -384,46 +392,67 @@ export default function MyMatches() {
 
                   {/* Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    {/* Prompt */}
-                    <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-blue">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Zap className="w-4 h-4 text-battle-blue" />
-                        <span className="text-xs font-bold text-battle-blue uppercase">Prompt</span>
-                      </div>
-                      <p className="text-sm text-neutral-200 font-medium">
-                        {promptCard?.title || 'Card não encontrado'}
-                      </p>
-                      {promptCard?.description && (
-                        <p className="text-xs text-neutral-500 mt-2">{promptCard.description}</p>
-                      )}
-                    </div>
-
-                    {/* Use Case */}
-                    <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-purple">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Target className="w-4 h-4 text-battle-purple" />
-                        <span className="text-xs font-bold text-battle-purple uppercase">Caso de Uso</span>
-                      </div>
-                      <p className="text-sm text-neutral-200 font-medium">
-                        {useCaseCard?.title || 'Card não encontrado'}
-                      </p>
-                      {useCaseCard?.description && (
-                        <p className="text-xs text-neutral-500 mt-2">{useCaseCard.description}</p>
-                      )}
-
-                    </div>
-
-                    {/* Tool */}
+                    {/* Caso de Uso — verde */}
                     <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-green">
                       <div className="flex items-center gap-2 mb-2">
-                        <Wrench className="w-4 h-4 text-battle-green" />
-                        <span className="text-xs font-bold text-battle-green uppercase">Ferramenta</span>
+                        <Target className="w-4 h-4 text-battle-green" />
+                        <span className="text-xs font-bold text-battle-green uppercase">Caso de Uso</span>
                       </div>
-                      <p className="text-sm text-neutral-200 font-medium">
-                        {toolCard?.title || 'Card não encontrado'}
-                      </p>
+                      <p className="text-sm font-semibold text-neutral-200">{useCaseCard?.title || 'Card não encontrado'}</p>
+                      {useCaseCard?.description && (
+                        <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{useCaseCard.description}</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          const text = [useCaseCard?.title, useCaseCard?.description].filter(Boolean).join('\n\n')
+                          if (text) handleCopy(text, `uc-${match.id}`)
+                        }}
+                        className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                          copiedId === `uc-${match.id}`
+                            ? 'bg-battle-green/20 text-battle-green border-battle-green/50'
+                            : 'bg-neutral-800 hover:bg-battle-green/10 text-neutral-400 hover:text-battle-green border-neutral-700 hover:border-battle-green/40'
+                        }`}
+                      >
+                        {copiedId === `uc-${match.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === `uc-${match.id}` ? 'Copiado!' : 'Copiar Caso de Uso'}
+                      </button>
+                    </div>
+
+                    {/* Prompt — laranja */}
+                    <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-orange-500">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-orange-400" />
+                        <span className="text-xs font-bold text-orange-400 uppercase">Prompt</span>
+                      </div>
+                      <p className="text-sm font-semibold text-neutral-200">{promptCard?.title || 'Card não encontrado'}</p>
+                      {promptCard?.description && (
+                        <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{promptCard.description}</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          const text = [promptCard?.title, promptCard?.description].filter(Boolean).join('\n\n')
+                          if (text) handleCopy(text, `pr-${match.id}`)
+                        }}
+                        className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                          copiedId === `pr-${match.id}`
+                            ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                            : 'bg-neutral-800 hover:bg-orange-500/10 text-neutral-400 hover:text-orange-400 border-neutral-700 hover:border-orange-500/40'
+                        }`}
+                      >
+                        {copiedId === `pr-${match.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === `pr-${match.id}` ? 'Copiado!' : 'Copiar Prompt'}
+                      </button>
+                    </div>
+
+                    {/* Ferramenta — lilás */}
+                    <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-purple">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Wrench className="w-4 h-4 text-battle-purple" />
+                        <span className="text-xs font-bold text-battle-purple uppercase">Ferramenta</span>
+                      </div>
+                      <p className="text-sm font-semibold text-neutral-200">{toolCard?.title || 'Card não encontrado'}</p>
                       {toolCard?.description && (
-                        <p className="text-xs text-neutral-500 mt-2">{toolCard.description}</p>
+                        <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{toolCard.description}</p>
                       )}
                     </div>
                   </div>
