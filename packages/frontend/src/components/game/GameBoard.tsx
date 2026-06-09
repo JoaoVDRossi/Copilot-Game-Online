@@ -65,6 +65,8 @@ export default function GameBoard() {
   const [timerVisible, setTimerVisible] = useState(false)
   // Tool IDs disabled by GM for this room (loaded from Azure on mount)
   const [disabledToolIds, setDisabledToolIds] = useState<Set<string>>(new Set())
+  // Only render game cards after disabledToolIds is confirmed from Azure (prevents flash of all tools)
+  const [toolsLoaded, setToolsLoaded] = useState(false)
   const isPausedRef = useRef(false)
   // Refs for debounced Azure sync (prevents race condition when matches happen rapidly)
   const syncAzureRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -95,12 +97,15 @@ export default function GameBoard() {
       // Load disabled tools from Azure Room so only GM-enabled tools are shown
       const roomForTools = getCurrentRoom()
       if (roomForTools) {
-        roomsApi.getAll().then((allRooms: any[]) => {
-          const azureRoom = allRooms.find((r: any) => r.id === roomForTools.id)
-          if (azureRoom?.disabledToolIds?.length) {
-            setDisabledToolIds(new Set(azureRoom.disabledToolIds))
-          }
-        }).catch(console.error)
+        try {
+          const allRoomsForTools = await roomsApi.getAll()
+          const azureRoom = allRoomsForTools.find((r: any) => r.id === roomForTools.id)
+          setDisabledToolIds(new Set(azureRoom?.disabledToolIds || []))
+        } catch (_) { /* ignore */ } finally {
+          setToolsLoaded(true)
+        }
+      } else {
+        setToolsLoaded(true)
       }
       
       // Track current round in room for GM dashboard
@@ -256,13 +261,13 @@ export default function GameBoard() {
     card => visibleDifficulties.includes(card.difficulty) && !disabledToolIds.has(card.id)
   )
 
-  // Memoize displayed cards — only re-shuffle after a match (shuffleSeed changes)
+  // Memoize displayed cards — re-shuffle after a match OR when disabled tools change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const selectCards = useCallback(() => selectCardsWithGuaranteedMatch(
     availablePromptCards,
     availableUseCaseCards,
     availableToolCards
-  ), [shuffleSeed, roundId, completedMatchKeys])
+  ), [shuffleSeed, roundId, completedMatchKeys, disabledToolIds])
   
   const [displayedCards, setDisplayedCards] = useState(() => selectCards())
   
@@ -528,6 +533,14 @@ export default function GameBoard() {
         </div>
 
         {/* Cards Board — order: UseCase | Prompt | Tool */}
+        {!toolsLoaded ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-energy-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-neutral-400 text-sm">Carregando ferramentas da partida…</p>
+            </div>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-3 mb-8 mx-auto" style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}>
           {/* Use Cases Column (left — verde) */}
           <div>
@@ -629,6 +642,7 @@ export default function GameBoard() {
             </div>
           </div>
         </div>
+        )} {/* end toolsLoaded conditional */}
 
         {/* Validate Button */}
         <div className="flex justify-center">
