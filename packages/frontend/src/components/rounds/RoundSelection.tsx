@@ -99,14 +99,16 @@ export default function RoundSelection() {
       setPlayerName(player.name)
       try {
         const rooms: any[] = await roomsApi.getAll()
-        const liveRoom = rooms.find((r: any) => r.id === player.roomId)        if (!liveRoom) {
+        const liveRoom = rooms.find((r: any) => r.id === player.roomId)
+        if (!liveRoom) {
           // Room was deleted by GM
           alert('⚠️ A sala foi excluída pelo Game Master!')
           localStorage.removeItem('copilot-combate-current-room')
           localStorage.removeItem('copilot-combate-current-player')
           navigate('/')
           return
-        }        if (liveRoom) {
+        }
+        if (liveRoom) {
           setActivePlayers(liveRoom.teams.length || 0)
           setAllRoomTeams(liveRoom.teams || [])
           if (liveRoom.status === 'finished') {
