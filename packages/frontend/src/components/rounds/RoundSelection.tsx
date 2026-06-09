@@ -210,6 +210,9 @@ export default function RoundSelection() {
       navigate('/')
     }
   }
+
+  return (
+    <div className="min-h-screen bg-bg-primary relative overflow-hidden">
       {/* Edit Name Modal */}
       {editingName && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
