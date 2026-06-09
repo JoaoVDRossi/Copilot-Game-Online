@@ -1,7 +1,7 @@
 import { Zap, LogOut, Users, BookOpen, Trophy, Clock, User, Pencil } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import RoundCard from './RoundCard'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getCurrentTeamStats, saveTeam, getCurrentTeam } from '../../utils/teamsManager'
 import { getCurrentTeamRoundProgress } from '../../utils/roundProgressManager'
 import { getCurrentPlayer, getRoomById, getCurrentRoom } from '../../utils/roomManager'
@@ -45,12 +45,39 @@ const roundsBase = [
 export default function RoundSelection() {
   const navigate = useNavigate()
   const location = useLocation()
+  const navigateRef = useRef(navigate)
+  const roomDeletedRef = useRef(false)
+  useEffect(() => { navigateRef.current = navigate })
   const [teamName, setTeamName] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [activePlayers, setActivePlayers] = useState(0)
   const [teamStats, setTeamStats] = useState({ score: 0, completedRounds: 0, totalRounds: 4 })
   const [rounds, setRounds] = useState<any[]>([])
   const [gameFinished, setGameFinished] = useState(false)
+
+  // Dedicated polling for room deletion — separate from loadStats to avoid stale closure issues
+  useEffect(() => {
+    const checkRoomExists = async () => {
+      if (roomDeletedRef.current) return
+      const player = getCurrentPlayer()
+      if (!player) return
+      try {
+        const rooms: any[] = await roomsApi.getAll()
+        const liveRoom = rooms.find((r: any) => r.id === player.roomId)
+        if (!liveRoom) {
+          roomDeletedRef.current = true
+          localStorage.removeItem('copilot-combate-current-room')
+          localStorage.removeItem('copilot-combate-current-player')
+          localStorage.removeItem('current-team')
+          alert('⚠️ A sala foi excluída pelo Game Master! Você será redirecionado para o início.')
+          navigateRef.current('/')
+        }
+      } catch (_) { /* ignore */ }
+    }
+    checkRoomExists()
+    const roomPoll = setInterval(checkRoomExists, 3000)
+    return () => clearInterval(roomPoll)
+  }, [])
 
   useEffect(() => {
     // Load current team info
@@ -100,14 +127,6 @@ export default function RoundSelection() {
       try {
         const rooms: any[] = await roomsApi.getAll()
         const liveRoom = rooms.find((r: any) => r.id === player.roomId)
-        if (!liveRoom) {
-          // Room was deleted by GM
-          alert('⚠️ A sala foi excluída pelo Game Master!')
-          localStorage.removeItem('copilot-combate-current-room')
-          localStorage.removeItem('copilot-combate-current-player')
-          navigate('/')
-          return
-        }
         if (liveRoom) {
           setActivePlayers(liveRoom.teams.length || 0)
           setAllRoomTeams(liveRoom.teams || [])
