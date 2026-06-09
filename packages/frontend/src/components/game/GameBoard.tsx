@@ -7,7 +7,7 @@ import PlayingCard from './PlayingCard'
 import MatchResult from './MatchResult'
 import { fetchActiveSession, getRemainingTime, formatTime } from '../../utils/sessionManager'
 import { DifficultyLevel, Card } from '../../types'
-import { addPointsToCurrentTeam, markRoundCompleted, getCurrentTeam } from '../../utils/teamsManager'
+import { addPointsToCurrentTeam, markRoundCompleted, getCurrentTeam, getCurrentTeamStats } from '../../utils/teamsManager'
 import { addPointsToRound, startRound, completeRound } from '../../utils/roundProgressManager'
 import { addMatchToHistory, getTeamRoundMatches } from '../../utils/matchHistoryManager'
 import { getCurrentPlayer, updateTeamScore, markTeamRoundCompleted, updateTeamCurrentRound, getCurrentRoom, getRoomById } from '../../utils/roomManager'
@@ -157,9 +157,12 @@ export default function GameBoard() {
     availableUseCases: Card[],
     availableTools: Card[]
   ): { prompts: Card[], useCases: Card[], tools: Card[] } => {
-    // Get all active match rules for this round
+    // Get all active match rules for this round (only for tools currently available to player)
+    const availableToolIds = new Set(availableTools.map(c => c.id))
     const allRules = getAllMatchRules()
-    const roundRules = allRules.filter(rule => rule.roundId === roundId && rule.active)
+    const roundRules = allRules.filter(rule =>
+      rule.roundId === roundId && rule.active && availableToolIds.has(rule.toolCardId)
+    )
 
     // Shuffle rules so we don't always pick the first one
     const shuffledRules = shuffle(roundRules)
@@ -301,18 +304,30 @@ export default function GameBoard() {
       
       // Add points to team in global leaderboard
       addPointsToCurrentTeam(pointsEarned)
+      // Read updated local score AFTER adding (avoids race condition in Azure sync)
+      const updatedLocalTeam = getCurrentTeamStats()
+      const localTotalScore = updatedLocalTeam?.score ?? pointsEarned
       
       // Sync score to room for GM dashboard
       const player = getCurrentPlayer()
       if (player) {
         updateTeamScore(player.roomId, player.teamId, pointsEarned)
-        // Sync to Azure (fire-and-forget)
+        // Sync to Azure using absolute local score (Math.max avoids overwriting higher concurrent writes)
         roomsApi.getAll().then((allRooms: any[]) => {
           const azureRoom = allRooms.find((r: any) => r.id === player.roomId)
           if (azureRoom) {
-            const updatedTeams = azureRoom.teams.map((t: any) =>
-              t.id === player.teamId ? { ...t, score: (t.score || 0) + pointsEarned } : t
-            )
+            const updatedTeams = azureRoom.teams.map((t: any) => {
+              if (t.id !== player.teamId) return t
+              const prevMatchCount = (t.matchCountPerRound?.[roundId!] || 0)
+              return {
+                ...t,
+                score: Math.max(localTotalScore, t.score || 0),
+                matchCountPerRound: {
+                  ...(t.matchCountPerRound || {}),
+                  [roundId!]: prevMatchCount + 1,
+                },
+              }
+            })
             roomsApi.update({ ...azureRoom, teams: updatedTeams }).catch(console.error)
           }
         }).catch(console.error)

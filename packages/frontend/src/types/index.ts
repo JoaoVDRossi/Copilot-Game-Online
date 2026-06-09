@@ -153,4 +153,5 @@ export interface RoomTeam {
   completedRounds: string[]
   currentRound?: string // e.g. 'round-1'
   joinedAt: string
+  matchCountPerRound?: Record<string, number> // matches feitos por round
 }

@@ -658,15 +658,27 @@ export default function GameMasterDashboard() {
               const allTeams = selectedRoom.teams || []
               const totalTeams = allTeams.length
 
-              // Calculate per-round validated points from validations (10 pts each)
+              // Total de matches possíveis por round (considerando apenas regras com ferramentas ativas)
+              const totalPossibleMatches = (roundId: string): number => {
+                return matchRules.filter(r => r.roundId === roundId && r.active).length
+              }
+
+              // Matches feitos pelo time no round (via matchCountPerRound sincronizado pelo GameBoard)
+              const teamMatchCount = (team: any, roundId: string): number => {
+                return team.matchCountPerRound?.[roundId] || 0
+              }
+
+              // Pontos de validação por time/round
               const roundValidatedPoints = (teamId: string, roundId: string): number => {
                 return pendingValidations
                   .filter((v: any) => v.teamId === teamId && v.roundId === roundId && v.validated && !v.rejected)
                   .length * 10
               }
 
-              // Get all validations (including already-validated) from state
-              // We use pendingValidations which already holds the room's validation list
+              // Pontos totais do round = matches × 3 + validações × 10
+              const roundTotalPoints = (team: any, roundId: string): number => {
+                return teamMatchCount(team, roundId) * 3 + roundValidatedPoints(team.id, roundId)
+              }
 
               return (
                 <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
@@ -742,17 +754,18 @@ export default function GameMasterDashboard() {
                           // Per-round view
                           <div className="space-y-2">
                             <p className="text-xs text-neutral-500 mb-3">
-                              Times que completaram {ROUND_LABELS[lbTab]} (pontos de matches validados neste round)
+                              Times no {ROUND_LABELS[lbTab]} — matches feitos / possíveis e pontos totais do round
                             </p>
                             {[...allTeams]
                               .map((t: any) => ({
                                 ...t,
                                 roundCompleted: (t.completedRounds || []).includes(lbTab),
-                                roundPts: roundValidatedPoints(t.id, lbTab),
+                                matchesDone: teamMatchCount(t, lbTab),
+                                totalPts: roundTotalPoints(t, lbTab),
                               }))
                               .sort((a, b) => {
                                 if (b.roundCompleted !== a.roundCompleted) return b.roundCompleted ? 1 : -1
-                                return b.roundPts - a.roundPts
+                                return b.totalPts - a.totalPts
                               })
                               .map((team: any, i: number) => (
                                 <div key={team.id} className={`flex items-center justify-between rounded-lg p-3 border ${team.roundCompleted ? 'bg-battle-green/10 border-battle-green/30' : 'bg-bg-tertiary border-neutral-700 opacity-60'}`}>
@@ -761,12 +774,17 @@ export default function GameMasterDashboard() {
                                     <div>
                                       <p className="font-semibold text-neutral-200">{team.name}</p>
                                       <p className="text-xs text-neutral-500">
-                                        {team.roundCompleted ? '✅ Completou o round' : '⏳ Em andamento'}
+                                        {team.roundCompleted ? '✅ Completou o round' : (
+                                          <>⏳ Em andamento — <span className="text-neutral-300 font-semibold">{team.matchesDone}/{totalPossibleMatches(lbTab)}</span> matches</>
+                                        )}
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-mono font-bold text-battle-blue text-sm">{team.roundPts} pts validados</p>
+                                    <p className="font-mono font-bold text-energy-primary text-sm">{team.totalPts} pts totais</p>
+                                    <p className="text-xs text-neutral-500">
+                                      {team.matchesDone * 3} match + {roundValidatedPoints(team.id, lbTab)} validação
+                                    </p>
                                   </div>
                                 </div>
                               ))}
