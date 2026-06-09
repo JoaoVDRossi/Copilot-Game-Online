@@ -6,10 +6,14 @@ const USE_API = API_BASE_URL !== '';
 
 // Generic fetch wrapper with error handling
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  // Append timestamp cache-buster to GET requests so Edge never returns a stale cached response
+  const isGet = !options.method || options.method.toUpperCase() === 'GET'
+  const sep = endpoint.includes('?') ? '&' : '?'
+  const url = isGet ? `${API_BASE_URL}${endpoint}${sep}_t=${Date.now()}` : `${API_BASE_URL}${endpoint}`
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(url, {
       ...options,
-      cache: 'no-store', // prevent Edge/Safari from returning stale cached responses
+      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
