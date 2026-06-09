@@ -255,7 +255,21 @@ export default function RoundSelection() {
               </div>
             </div>
             {playerName && (
-              <div className=\"flex items-center gap-2 bg-bg-secondary/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-neutral-700\">\n                <User className=\"w-4 h-4 text-battle-blue\" />\n                <div>\n                  <p className=\"text-xs text-neutral-400\">Jogador</p>\n                  <p className=\"font-semibold text-sm text-neutral-50\">{playerName}</p>\n                </div>\n                <button\n                  onClick={handleEditName}\n                  title=\"Editar nome\"\n                  className=\"ml-1 p-1 rounded hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-colors\"\n                >\n                  <Pencil className=\"w-3.5 h-3.5\" />\n                </button>\n              </div>\n            )}
+              <div className="flex items-center gap-2 bg-bg-secondary/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-neutral-700">
+                <User className="w-4 h-4 text-battle-blue" />
+                <div>
+                  <p className="text-xs text-neutral-400">Jogador</p>
+                  <p className="font-semibold text-sm text-neutral-50">{playerName}</p>
+                </div>
+                <button
+                  onClick={handleEditName}
+                  title="Editar nome"
+                  className="ml-1 p-1 rounded hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
