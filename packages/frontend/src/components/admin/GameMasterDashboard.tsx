@@ -658,9 +658,14 @@ export default function GameMasterDashboard() {
               const allTeams = selectedRoom.teams || []
               const totalTeams = allTeams.length
 
-              // Total de matches possíveis por round (considerando apenas regras com ferramentas ativas)
+              // Total de matches possíveis por round — respeita ferramentas desabilitadas na sala
               const totalPossibleMatches = (roundId: string): number => {
-                return matchRules.filter(r => r.roundId === roundId && r.active).length
+                const roomDisabledTools = new Set<string>(selectedRoom?.disabledToolIds || [])
+                return matchRules.filter(r =>
+                  r.roundId === roundId &&
+                  r.active &&
+                  !roomDisabledTools.has(r.toolCardId)
+                ).length
               }
 
               // Matches feitos pelo time no round (via matchCountPerRound sincronizado pelo GameBoard)

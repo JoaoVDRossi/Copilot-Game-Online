@@ -144,6 +144,9 @@ export default function GameBoard() {
             navigate('/')
             return
           }
+          // Refresh disabled tools list on every cycle (GM may toggle tools mid-round)
+          const latestDisabled = currentRoomFromApi.disabledToolIds || []
+          setDisabledToolIds(new Set(latestDisabled))
         } catch (_) { /* ignore */ }
       } else {
         // Simple decrement between full checks — only when NOT paused
