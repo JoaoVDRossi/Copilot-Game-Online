@@ -150,8 +150,13 @@ export default function GameBoard() {
             return
           }
           // Refresh disabled tools list on every cycle (GM may toggle tools mid-round)
-          const latestDisabled = currentRoomFromApi.disabledToolIds || []
-          setDisabledToolIds(new Set(latestDisabled))
+          // Use functional update: only change reference if content actually changed,
+          // preventing unnecessary useCallback recreation and card reshuffling.
+          const latestDisabled: string[] = currentRoomFromApi.disabledToolIds || []
+          setDisabledToolIds(prev => {
+            if (latestDisabled.length === prev.size && latestDisabled.every(id => prev.has(id))) return prev
+            return new Set(latestDisabled)
+          })
         } catch (_) { /* ignore */ }
       } else {
         // Simple decrement between full checks — only when NOT paused
