@@ -44,8 +44,8 @@ export default function DirectJoinRoom() {
     e.preventDefault()
     setError('')
 
-    if (!playerName.trim()) {
-      setError('Digite seu nome!')
+    if (!playerName.trim() || playerName.trim().split(' ').filter(Boolean).length < 2) {
+      setError('Digite seu nome e sobrenome completo!')
       return
     }
     if (!teamName.trim()) {
@@ -189,7 +189,7 @@ export default function DirectJoinRoom() {
               <div>
                 <label htmlFor="dj-playerName" className="flex items-center gap-2 text-sm font-semibold text-neutral-300 mb-2">
                   <Users className="w-4 h-4" />
-                  Seu Nome
+                  Seu Nome <span className="text-neutral-500 font-normal">(nome e sobrenome)</span>
                 </label>
                 <input
                   type="text"

@@ -5,7 +5,7 @@ import { rounds } from '../../data/mockData'
 import { fetchActiveSession, startRoundSession, stopRoundSession, formatTime, stopAllSessions, getRemainingTime, toggleTimerVisibility, pauseRoundSession, resumeRoundSession } from '../../utils/sessionManager'
 import { useNavigate } from 'react-router-dom'
 import { getAuthSession, clearAuthSession } from '../../utils/authManager'
-import { getRoomsByCreator } from '../../utils/roomManager'
+// roomManager imports removed (no longer needed at top level)
 import { roomsApi } from '../../utils/apiClient'
 import { RoundSession, Card, ValidatorEntry } from '../../types'
 import {
@@ -37,6 +37,7 @@ export default function GameMasterDashboard() {
   const matchRules = getAllMatchRules()
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
+  const [leaderboardSubTab, setLeaderboardSubTab] = useState<string>('geral')
   const [isGameFinishedState, setIsGameFinishedState] = useState(false)
 
   // Session control
@@ -252,8 +253,8 @@ export default function GameMasterDashboard() {
     setSelectedRoom(updated)
   }
 
-  // Get teams from GM's rooms for leaderboard (legacy)
-  const getMyTeams = () => []
+  // Get teams from GM's rooms for leaderboard (legacy - kept for future use)
+  // const getMyTeams = () => []
 
   return (
     <div className="min-h-screen bg-bg-primary p-6">
@@ -544,7 +545,7 @@ export default function GameMasterDashboard() {
                             <button
                               key={tool.id}
                               onClick={() => {
-                                const result = toggleToolAndCascade(tool.id)
+                                const result = toggleToolAndCascade(tool.id, selectedRoom?.id)
                                 if (result.blocked) {
                                   alert('Não é possível desmarcar a última ferramenta disponível neste round.')
                                 } else {
@@ -646,37 +647,137 @@ export default function GameMasterDashboard() {
         )}
 
             {/* Leaderboard Tab - room specific */}
-            {roomDetailTab === 'leaderboard' && (
-              <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
-                <h3 className="font-display text-xl font-bold text-neutral-50 mb-4 flex items-center gap-2">
-                  <Trophy className="w-6 h-6 text-yellow-400" />
-                  Classificação — {selectedRoom.name}
-                </h3>
-                {(selectedRoom.teams || []).length === 0 ? (
-                  <p className="text-neutral-500">Nenhum time nesta sala ainda.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {[...(selectedRoom.teams || [])].sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).map((team: any, i: number) => (
-                      <div key={team.id} className="flex items-center justify-between bg-bg-tertiary rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-bold text-neutral-500 w-8 text-center">
-                            {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                          </span>
-                          <div>
-                            <p className="font-semibold text-neutral-200">{team.name}</p>
-                            <p className="text-xs text-neutral-500">
-                              {team.completedRounds?.length || 0}/4 rounds
-                              {team.currentRound && ` • ${rounds.find(r => r.id === team.currentRound)?.name || team.currentRound}`}
-                            </p>
-                          </div>
+            {roomDetailTab === 'leaderboard' && (() => {
+              const ROUND_IDS = ['round-1', 'round-2', 'round-3', 'round-4']
+              const ROUND_LABELS: Record<string, string> = {
+                'round-1': 'Round 1', 'round-2': 'Round 2', 'round-3': 'Round 3', 'round-4': 'Round 4',
+              }
+              const ROUND_COLORS: Record<string, string> = {
+                'round-1': '#EF4444', 'round-2': '#F59E0B', 'round-3': '#FCD34D', 'round-4': '#EA580C',
+              }
+              const allTeams = selectedRoom.teams || []
+              const totalTeams = allTeams.length
+
+              // Calculate per-round validated points from validations (10 pts each)
+              const roundValidatedPoints = (teamId: string, roundId: string): number => {
+                return pendingValidations
+                  .filter((v: any) => v.teamId === teamId && v.roundId === roundId && v.validated && !v.rejected)
+                  .length * 10
+              }
+
+              // Get all validations (including already-validated) from state
+              // We use pendingValidations which already holds the room's validation list
+
+              return (
+                <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
+                  <h3 className="font-display text-xl font-bold text-neutral-50 mb-5 flex items-center gap-2">
+                    <Trophy className="w-6 h-6 text-yellow-400" />
+                    Classificação — {selectedRoom.name}
+                  </h3>
+
+                  {/* Round completion summary */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    {ROUND_IDS.map(rid => {
+                      const completed = allTeams.filter((t: any) => (t.completedRounds || []).includes(rid)).length
+                      return (
+                        <div key={rid} className="bg-bg-tertiary rounded-lg p-3 border border-neutral-700">
+                          <p className="text-xs text-neutral-500 font-semibold mb-1">{ROUND_LABELS[rid]}</p>
+                          <p className="font-mono font-bold text-lg" style={{ color: ROUND_COLORS[rid] }}>
+                            {completed}<span className="text-neutral-600 text-sm">/{totalTeams}</span>
+                          </p>
+                          <p className="text-xs text-neutral-500">finalizaram</p>
                         </div>
-                        <span className="font-mono font-bold text-energy-primary text-lg">{team.score || 0} pts</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* Sub-tabs: Geral + por Round */}
+                  {(() => {
+                    const [lbTab, setLbTab] = [leaderboardSubTab, setLeaderboardSubTab]
+                    const tabs = [{ id: 'geral', label: 'Geral' }, ...ROUND_IDS.map(r => ({ id: r, label: ROUND_LABELS[r] }))]
+
+                    return (
+                      <>
+                        <div className="flex gap-2 mb-4 flex-wrap">
+                          {tabs.map(tab => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setLbTab(tab.id)}
+                              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                                lbTab === tab.id
+                                  ? 'bg-energy-primary text-white'
+                                  : 'bg-bg-tertiary text-neutral-400 hover:text-neutral-200'
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {totalTeams === 0 ? (
+                          <p className="text-neutral-500">Nenhum time nesta sala ainda.</p>
+                        ) : lbTab === 'geral' ? (
+                          <div className="space-y-2">
+                            {[...allTeams].sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).map((team: any, i: number) => (
+                              <div key={team.id} className="flex items-center justify-between bg-bg-tertiary rounded-lg p-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-lg font-bold text-neutral-500 w-8 text-center">
+                                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                                  </span>
+                                  <div>
+                                    <p className="font-semibold text-neutral-200">{team.name}</p>
+                                    <div className="flex gap-1 mt-1">
+                                      {ROUND_IDS.map(rid => (
+                                        <span key={rid} className={`w-2 h-2 rounded-full ${(team.completedRounds || []).includes(rid) ? 'bg-battle-green' : 'bg-neutral-700'}`} title={ROUND_LABELS[rid]} />
+                                      ))}
+                                      <span className="text-xs text-neutral-500 ml-1">{(team.completedRounds || []).length}/4 rounds</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="font-mono font-bold text-energy-primary text-lg">{team.score || 0} pts</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Per-round view
+                          <div className="space-y-2">
+                            <p className="text-xs text-neutral-500 mb-3">
+                              Times que completaram {ROUND_LABELS[lbTab]} (pontos de matches validados neste round)
+                            </p>
+                            {[...allTeams]
+                              .map((t: any) => ({
+                                ...t,
+                                roundCompleted: (t.completedRounds || []).includes(lbTab),
+                                roundPts: roundValidatedPoints(t.id, lbTab),
+                              }))
+                              .sort((a, b) => {
+                                if (b.roundCompleted !== a.roundCompleted) return b.roundCompleted ? 1 : -1
+                                return b.roundPts - a.roundPts
+                              })
+                              .map((team: any, i: number) => (
+                                <div key={team.id} className={`flex items-center justify-between rounded-lg p-3 border ${team.roundCompleted ? 'bg-battle-green/10 border-battle-green/30' : 'bg-bg-tertiary border-neutral-700 opacity-60'}`}>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm font-bold text-neutral-500 w-6 text-center">#{i + 1}</span>
+                                    <div>
+                                      <p className="font-semibold text-neutral-200">{team.name}</p>
+                                      <p className="text-xs text-neutral-500">
+                                        {team.roundCompleted ? '✅ Completou o round' : '⏳ Em andamento'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-mono font-bold text-battle-blue text-sm">{team.roundPts} pts validados</p>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              )
+            })()}
 
             {/* Validation Tab - room-specific (pendingValidations filtered by updateState) */}
             {roomDetailTab === 'validation' && (() => {

@@ -37,7 +37,9 @@ module.exports = async function (context, req) {
         teams: typeof roomData.teams === 'string' ? roomData.teams : JSON.stringify(roomData.teams || []),
         createdAt: roomData.createdAt,
         startedAt: roomData.startedAt || '',
-        finishedAt: roomData.finishedAt || ''
+        finishedAt: roomData.finishedAt || '',
+        validatorToken: roomData.validatorToken || '',
+        validators: typeof roomData.validators === 'string' ? roomData.validators : JSON.stringify(roomData.validators || [])
     };
 
     try {

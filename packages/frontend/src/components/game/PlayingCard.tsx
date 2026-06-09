@@ -5,9 +5,10 @@ interface PlayingCardProps {
   selected: boolean
   onSelect: () => void
   villainColor: string
+  typeAccent?: string // tint color for card type (green=useCase, orange=prompt, purple=tool)
 }
 
-export default function PlayingCard({ card, selected, onSelect, villainColor }: PlayingCardProps) {
+export default function PlayingCard({ card, selected, onSelect, villainColor, typeAccent }: PlayingCardProps) {
   return (
     <div
       onClick={onSelect}
@@ -17,7 +18,8 @@ export default function PlayingCard({ card, selected, onSelect, villainColor }: 
           : 'border-transparent hover:border-neutral-600 hover:-translate-y-0.5'
       }`}
       style={{
-        boxShadow: selected ? `0 0 15px ${villainColor}40` : 'none',
+        boxShadow: selected ? `0 0 15px ${villainColor}40` : typeAccent ? `0 0 8px ${typeAccent}30` : 'none',
+        borderColor: selected ? undefined : typeAccent ? `${typeAccent}40` : undefined,
       }}
     >
       {/* Selected Indicator */}
@@ -38,10 +40,18 @@ export default function PlayingCard({ card, selected, onSelect, villainColor }: 
         draggable={false}
       />
 
+      {/* Type accent overlay (subtle bottom tint) */}
+      {typeAccent && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1 opacity-80"
+          style={{ background: typeAccent }}
+        />
+      )}
+
       {/* Hover Effect */}
       <div 
         className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-20 transition-opacity pointer-events-none"
-        style={{ background: `linear-gradient(135deg, ${villainColor}, transparent)` }}
+        style={{ background: typeAccent ? `linear-gradient(135deg, ${typeAccent}, transparent)` : `linear-gradient(135deg, ${villainColor}, transparent)` }}
       />
     </div>
   )

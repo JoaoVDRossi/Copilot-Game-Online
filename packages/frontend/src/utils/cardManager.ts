@@ -2,6 +2,7 @@
 
 import { Card, MatchRule } from '../types'
 import { cards as defaultCards, matchRules as defaultMatchRules } from '../data/mockData'
+import { roomsApi } from './apiClient'
 
 const CARDS_STORAGE_KEY = 'copilot-combate-cards'
 const MATCH_RULES_STORAGE_KEY = 'copilot-combate-match-rules'
@@ -70,8 +71,12 @@ export const toggleCardActive = (cardId: string): void => {
 // Toggle a tool card with cascade logic:
 // - Deactivating: cascades to linked prompt/useCase cards AND match rules; blocked if it is the last active tool in the round
 // - Reactivating: cascades re-enable to linked prompt/useCase cards AND match rules
+// Optionally syncs disabledToolIds to Azure Room (roomId required for GM context)
 // Returns { cards, blocked } where `blocked` means the action was prevented
-export const toggleToolAndCascade = (toolCardId: string): { cards: Card[]; blocked: boolean } => {
+export const toggleToolAndCascade = (
+  toolCardId: string,
+  roomId?: string
+): { cards: Card[]; blocked: boolean } => {
   const cards = getAllCards()
   const rules = getAllMatchRules()
 
@@ -116,6 +121,18 @@ export const toggleToolAndCascade = (toolCardId: string): { cards: Card[]; block
 
   saveAllCards(cards)
   saveAllMatchRules(rules)
+
+  // Sync disabledToolIds to Azure Room so players see the same set of tools
+  if (roomId) {
+    const disabledIds = cards.filter(c => c.type === 'tool' && !c.active).map(c => c.id)
+    roomsApi.getAll().then((allRooms: any[]) => {
+      const room = allRooms.find((r: any) => r.id === roomId)
+      if (room) {
+        roomsApi.update({ ...room, disabledToolIds: disabledIds }).catch(console.error)
+      }
+    }).catch(console.error)
+  }
+
   return { cards, blocked: false }
 }
 

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, Zap, Target, Wrench, CheckCircle, Clock, Award, Upload, Image as ImageIcon, XCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Trophy, Zap, Target, Wrench, CheckCircle, Clock, Award, Upload, Image as ImageIcon, XCircle, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { getCurrentTeam } from '../../utils/teamsManager'
 import { getCurrentRoom } from '../../utils/roomManager'
 import { getTeamMatchHistory, markMatchAsTested, resetMatchTestedStatus, type MatchHistory } from '../../utils/matchHistoryManager'
@@ -9,7 +9,450 @@ import { getAllTestValidations } from '../../utils/testValidationManager'
 import { getAllCards } from '../../utils/cardManager'
 import type { Card } from '../../types'
 
+const roundMeta: Record<string, { label: string; color: string }> = {
+  'round-1': { label: 'Round 1 — Mestre das Notificações', color: '#EF4444' },
+  'round-2': { label: 'Round 2 — Capitã Pesquisa Infinita', color: '#F59E0B' },
+  'round-3': { label: 'Round 3 — Senhora Perfeccionista', color: '#FCD34D' },
+  'round-4': { label: 'Round 4 — ControlC+V', color: '#EA580C' },
+}
+const ROUND_ORDER = ['round-1', 'round-2', 'round-3', 'round-4']
+
 export default function MyMatches() {
+  const navigate = useNavigate()
+  const [matches, setMatches] = useState<MatchHistory[]>([])
+  const [cards, setCards] = useState<Card[]>([])
+  const [teamName, setTeamName] = useState('')
+  const [validations, setValidations] = useState<any[]>([])
+  const [selectedMatchForTest, setSelectedMatchForTest] = useState<string | null>(null)
+  const [testImage, setTestImage] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Which round accordions are open (default all open)
+  const [openRounds, setOpenRounds] = useState<Set<string>>(new Set(ROUND_ORDER))
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Compress image to JPEG under Azure Table Storage 64KB string limit
+  const compressImage = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('Falha ao carregar imagem'))
+      img.onload = () => {
+        const tryCompress = (maxDim: number): string => {
+          let width = img.width, height = img.height
+          if (width >= height) { if (width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim } }
+          else { if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim } }
+          const canvas = document.createElement('canvas')
+          canvas.width = width; canvas.height = height
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+          const THRESHOLD = 38000
+          let quality = 0.5, result = canvas.toDataURL('image/jpeg', quality)
+          while (result.length > THRESHOLD && quality > 0.05) {
+            quality = Math.round((quality - 0.05) * 100) / 100
+            result = canvas.toDataURL('image/jpeg', quality)
+          }
+          return result
+        }
+        let result = tryCompress(480)
+        if (result.length > 38000) result = tryCompress(240)
+        if (result.length > 38000) result = tryCompress(120)
+        resolve(result)
+      }
+      img.src = dataUrl
+    })
+  }
+
+  useEffect(() => {
+    const currentTeam = getCurrentTeam()
+    if (!currentTeam) { navigate('/'); return }
+    setTeamName(currentTeam.name)
+    setMatches(getTeamMatchHistory(currentTeam.id))
+    setCards(getAllCards())
+    getAllTestValidations().then(v => setValidations(v))
+    const poll = setInterval(() => getAllTestValidations().then(v => setValidations(v)), 5000)
+    return () => clearInterval(poll)
+  }, [navigate])
+
+  const getCardById = (id: string): Card | undefined => cards.find(c => c.id === id)
+  const isMatchValidated = (matchId: string) => validations.some(v => v.matchId === matchId && v.validated && !v.rejected)
+  const getMatchRejection = (matchId: string) => validations.find(v => v.matchId === matchId && v.rejected)
+
+  // Copy text to clipboard with visual feedback
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(key)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
+
+  // File processing shared between click-select and drag-drop
+  const processFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) { alert('❌ Por favor, selecione uma imagem válida'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('❌ A imagem deve ter no máximo 5MB'); return }
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result as string)
+      setTestImage(compressed)
+    }
+    reader.readAsDataURL(file)
+  }, [])
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+  }
+
+  // Drag-and-drop handlers
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true) }
+  const handleDragLeave = () => setDragOver(false)
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
+  }
+
+  const handleTestSubmit = (match: MatchHistory) => {
+    const rejection = getMatchRejection(match.id)
+    if (rejection) {
+      removeRejectedValidation(match.id)
+      resetMatchTestedStatus(match.id)
+      setMatches(prev => prev.map(m => m.id === match.id ? { ...m, tested: false } : m))
+      getAllTestValidations().then(v => setValidations(v))
+    }
+    setSelectedMatchForTest(match.id)
+    setTestImage(null)
+  }
+
+  const handleConfirmTest = async () => {
+    if (!selectedMatchForTest) return
+    if (!testImage) { alert('❌ Por favor, selecione uma imagem do teste antes de enviar'); return }
+    const match = matches.find(m => m.id === selectedMatchForTest)
+    if (!match) return
+    const useCaseCard = getCardById(match.useCaseCardId)
+    if (!useCaseCard) return
+    const currentTeam = getCurrentTeam()
+    if (!currentTeam) return
+    const success = await submitTestValidation(
+      match.id, match.teamId, match.teamName, match.roundId,
+      match.useCaseCardId, useCaseCard.title, testImage, getCurrentRoom()?.id
+    )
+    if (!success) { alert('❌ Erro ao enviar o teste. Tente novamente.\n\nSe o problema persistir, tente usar uma imagem menor.'); return }
+    markMatchAsTested(match.id)
+    setMatches(prev => prev.map(m => m.id === match.id ? { ...m, tested: true } : m))
+    setSelectedMatchForTest(null); setTestImage(null)
+    getAllTestValidations().then(v => setValidations(v))
+    alert('✅ Teste enviado para validação!\n\nO facilitador verificará sua implementação.')
+  }
+
+  const handleCancelTest = () => { setSelectedMatchForTest(null); setTestImage(null) }
+
+  const toggleRound = (roundId: string) => {
+    setOpenRounds(prev => {
+      const next = new Set(prev)
+      next.has(roundId) ? next.delete(roundId) : next.add(roundId)
+      return next
+    })
+  }
+
+  // Group matches by round
+  const matchesByRound = ROUND_ORDER.reduce((acc, rid) => {
+    acc[rid] = matches.filter(m => m.roundId === rid)
+    return acc
+  }, {} as Record<string, MatchHistory[]>)
+
+  const totalValidated = matches.filter(m => isMatchValidated(m.id)).length
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0a1a] via-[#1a1a2e] to-[#0a0a1a]">
+      {/* Header */}
+      <div className="bg-bg-secondary border-b border-white/10">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button onClick={() => navigate('/rounds')} className="flex items-center gap-2 text-neutral-400 hover:text-neutral-200 transition-colors">
+                <ArrowLeft className="w-5 h-5" /><span className="font-medium">Voltar</span>
+              </button>
+              <div className="w-px h-6 bg-white/10" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-battle-green/20 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-battle-green" />
+                </div>
+                <div>
+                  <h1 className="font-display text-xl font-bold text-neutral-50">Meus Matches</h1>
+                  <p className="text-sm text-neutral-400">Time: {teamName}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { icon: CheckCircle, color: 'text-battle-green', label: 'Total', value: matches.length },
+            { icon: Clock, color: 'text-battle-blue', label: 'Aguardando Teste', value: matches.filter(m => !m.tested).length },
+            { icon: Trophy, color: 'text-yellow-400', label: 'Enviados', value: matches.filter(m => m.tested).length },
+            { icon: Award, color: 'text-battle-purple', label: 'Validados (+10pts)', value: totalValidated },
+          ].map(({ icon: Icon, color, label, value }) => (
+            <div key={label} className="bg-bg-secondary rounded-xl p-4 border border-white/10">
+              <div className="flex items-center gap-3">
+                <Icon className={`w-5 h-5 ${color}`} />
+                <div>
+                  <p className="text-xs text-neutral-400">{label}</p>
+                  <p className="text-2xl font-bold text-neutral-50">{value}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {matches.length === 0 ? (
+          <div className="bg-bg-secondary rounded-xl p-12 border border-white/10 text-center">
+            <Trophy className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+            <h3 className="font-display text-xl font-bold text-neutral-400 mb-2">Nenhum match registrado ainda</h3>
+            <p className="text-sm text-neutral-500">Complete rounds para ver suas combinações corretas aqui!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {ROUND_ORDER.map(roundId => {
+              const roundMatches = matchesByRound[roundId]
+              if (roundMatches.length === 0) return null
+              const meta = roundMeta[roundId]
+              const isOpen = openRounds.has(roundId)
+              const validatedCount = roundMatches.filter(m => isMatchValidated(m.id)).length
+
+              return (
+                <div key={roundId} className="bg-bg-secondary rounded-xl border border-neutral-700 overflow-hidden">
+                  {/* Round Header / Accordion Toggle */}
+                  <button
+                    onClick={() => toggleRound(roundId)}
+                    className="w-full flex items-center justify-between px-6 py-4 hover:bg-bg-tertiary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                        style={{ backgroundColor: meta.color }}>
+                        {roundId.split('-')[1]}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-display font-bold text-neutral-50">{meta.label}</p>
+                        <p className="text-xs text-neutral-500">{roundMatches.length} match(es) • {validatedCount} validado(s)</p>
+                      </div>
+                    </div>
+                    {isOpen ? <ChevronUp className="w-5 h-5 text-neutral-400" /> : <ChevronDown className="w-5 h-5 text-neutral-400" />}
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-6 pb-6 space-y-4 border-t border-neutral-700/50 pt-4">
+                      {roundMatches.map(match => {
+                        const promptCard = getCardById(match.promptCardId)
+                        const useCaseCard = getCardById(match.useCaseCardId)
+                        const toolCard = getCardById(match.toolCardId)
+                        const matchDate = new Date(match.timestamp)
+                        const rejection = getMatchRejection(match.id)
+
+                        return (
+                          <div key={match.id}
+                            className={`rounded-xl p-5 border transition-colors ${
+                              rejection ? 'border-battle-red/60 bg-battle-red/5'
+                              : isMatchValidated(match.id) ? 'border-battle-green/50 bg-battle-green/5'
+                              : 'border-neutral-700 bg-bg-tertiary/50'
+                            }`}>
+
+                            {/* Match header */}
+                            <div className="flex items-center justify-between mb-4">
+                              <p className="text-xs text-neutral-500">
+                                {matchDate.toLocaleDateString('pt-BR')} às {matchDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              {rejection && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-battle-red/20 border border-battle-red/50 rounded-lg">
+                                  <XCircle className="w-4 h-4 text-battle-red" />
+                                  <span className="text-xs font-bold text-battle-red">Invalidado</span>
+                                </div>
+                              )}
+                              {!rejection && isMatchValidated(match.id) && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-battle-green/20 border border-battle-green/50 rounded-lg">
+                                  <CheckCircle className="w-4 h-4 text-battle-green" />
+                                  <span className="text-xs font-bold text-battle-green">Validado ✓</span>
+                                </div>
+                              )}
+                              {!rejection && !isMatchValidated(match.id) && match.tested && (
+                                <div className="flex items-center gap-2 text-battle-blue">
+                                  <Clock className="w-4 h-4" />
+                                  <span className="text-xs font-semibold">Aguardando Validação</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Cards — order: Caso de Uso | Prompt | Ferramenta */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                              {/* Caso de Uso */}
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-green">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-battle-green" />
+                                    <span className="text-xs font-bold text-battle-green uppercase">Caso de Uso</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const text = [useCaseCard?.title, useCaseCard?.description].filter(Boolean).join('\n\n')
+                                      if (text) handleCopy(text, `uc-${match.id}`)
+                                    }}
+                                    title="Copiar Caso de Uso"
+                                    className="p-1 rounded hover:bg-neutral-700 text-neutral-500 hover:text-battle-green transition-colors"
+                                  >
+                                    {copiedId === `uc-${match.id}` ? <Check className="w-3.5 h-3.5 text-battle-green" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{useCaseCard?.title || '—'}</p>
+                                {useCaseCard?.description && (
+                                  <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{useCaseCard.description}</p>
+                                )}
+                              </div>
+
+                              {/* Prompt */}
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-energy-primary">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-energy-primary" />
+                                    <span className="text-xs font-bold text-energy-primary uppercase">Prompt</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const text = [promptCard?.title, promptCard?.description].filter(Boolean).join('\n\n')
+                                      if (text) handleCopy(text, `pr-${match.id}`)
+                                    }}
+                                    title="Copiar Prompt"
+                                    className="p-1 rounded hover:bg-neutral-700 text-neutral-500 hover:text-energy-primary transition-colors"
+                                  >
+                                    {copiedId === `pr-${match.id}` ? <Check className="w-3.5 h-3.5 text-energy-primary" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{promptCard?.title || '—'}</p>
+                                {promptCard?.description && (
+                                  <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{promptCard.description}</p>
+                                )}
+                              </div>
+
+                              {/* Ferramenta */}
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-purple">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Wrench className="w-4 h-4 text-battle-purple" />
+                                  <span className="text-xs font-bold text-battle-purple uppercase">Ferramenta</span>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{toolCard?.title || '—'}</p>
+                                {toolCard?.description && (
+                                  <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{toolCard.description}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Status / Action area */}
+                            {(() => {
+                              // ── REJECTED ──────────────────────────────────
+                              if (rejection) {
+                                return (
+                                  <div className="bg-battle-red/10 border border-battle-red/40 rounded-lg p-4 flex items-start gap-3">
+                                    <XCircle className="w-5 h-5 text-battle-red flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-bold text-battle-red mb-1">❌ Match Invalidado</p>
+                                      <p className="text-sm text-neutral-200">{rejection.rejectionReason}</p>
+                                      {rejection.rejectedAt && (
+                                        <p className="text-xs text-neutral-500 mt-1">
+                                          Avaliado em {new Date(rejection.rejectedAt).toLocaleString('pt-BR')}
+                                        </p>
+                                      )}
+                                      <button
+                                        onClick={() => handleTestSubmit(match)}
+                                        className="mt-3 px-4 py-1.5 bg-battle-red/20 hover:bg-battle-red/30 text-battle-red border border-battle-red/50 rounded-lg text-xs font-semibold transition-colors"
+                                      >
+                                        Tentar novamente
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // ── VALIDATED ─────────────────────────────────
+                              if (isMatchValidated(match.id)) {
+                                return (
+                                  <div className="bg-battle-green/10 border border-battle-green/40 rounded-lg p-4 flex items-center gap-3">
+                                    <CheckCircle className="w-5 h-5 text-battle-green flex-shrink-0" />
+                                    <div>
+                                      <p className="text-sm font-bold text-battle-green">🎉 Parabéns, seu match foi validado!</p>
+                                      <p className="text-xs text-neutral-400 mt-0.5">+10 pontos adicionados ao seu time</p>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // ── AWAITING ───────────────────────────────────
+                              if (match.tested) {
+                                return (
+                                  <div className="flex justify-end">
+                                    <div className="px-5 py-2 bg-battle-blue/10 border border-battle-blue/30 text-battle-blue rounded-lg text-sm font-semibold flex items-center gap-2">
+                                      <Clock className="w-4 h-4" />Aguardando Validação
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // ── UPLOAD ─────────────────────────────────────
+                              if (selectedMatchForTest === match.id) {
+                                return (
+                                  <div className="space-y-3">
+                                    <div
+                                      className={`rounded-lg border-2 border-dashed transition-colors ${dragOver ? 'border-battle-blue bg-battle-blue/10' : 'border-battle-blue/50 bg-bg-primary'}`}
+                                      onDragOver={handleDragOver}
+                                      onDragLeave={handleDragLeave}
+                                      onDrop={handleDrop}
+                                    >
+                                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                                      {testImage ? (
+                                        <div className="p-4 space-y-3">
+                                          <img src={testImage} alt="Preview" className="w-full max-h-64 object-contain rounded-lg" />
+                                          <button onClick={() => fileInputRef.current?.click()} className="w-full px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+                                            <Upload className="w-4 h-4" />Trocar Imagem
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => fileInputRef.current?.click()} className="w-full py-8 text-neutral-400 hover:text-battle-blue transition-colors flex flex-col items-center gap-2">
+                                          <ImageIcon className="w-12 h-12" />
+                                          <span className="text-sm font-medium">Arraste a imagem ou clique para selecionar</span>
+                                          <span className="text-xs text-neutral-500">PNG, JPG ou GIF (máx. 5MB)</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-3">
+                                      <button onClick={handleCancelTest} className="flex-1 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+                                      <button onClick={handleConfirmTest} disabled={!testImage} className="flex-1 px-4 py-2 bg-battle-green hover:bg-battle-green/90 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />Enviar Teste
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // ── NOT SUBMITTED ──────────────────────────────
+                              return (
+                                <div className="flex justify-end">
+                                  <button onClick={() => handleTestSubmit(match)} className="px-5 py-2 bg-battle-blue hover:bg-battle-blue/90 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />Testei o Caso de Uso
+                                  </button>
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
   const navigate = useNavigate()
   const [matches, setMatches] = useState<MatchHistory[]>([])
   const [cards, setCards] = useState<Card[]>([])

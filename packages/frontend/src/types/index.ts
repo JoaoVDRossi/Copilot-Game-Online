@@ -136,6 +136,7 @@ export interface Room {
   createdBy: string // admin identifier
   teams: RoomTeam[]
   matchesPerRound?: Record<string, number> // e.g. { 'round-1': 3, 'round-2': 5 }
+  disabledToolIds?: string[] // tool card IDs disabled by GM for this room
   validatorToken?: string // UUID for validator invite links
   validators?: ValidatorEntry[] // active validators who joined via link
   createdAt: string

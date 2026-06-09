@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Zap, Trophy, AlertCircle, Clock } from 'lucide-react'
+import { ArrowLeft, Zap, Trophy, AlertCircle, Clock, ListChecks } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { rounds, villains } from '../../data/mockData'
 import { getCardsByRoundTypeAndArea, validateMatch, getAllMatchRules } from '../../utils/cardManager'
@@ -63,6 +63,8 @@ export default function GameBoard() {
   const [visibleDifficulties] = useState<DifficultyLevel[]>(['easy', 'medium', 'hard'])
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [timerVisible, setTimerVisible] = useState(false)
+  // Tool IDs disabled by GM for this room (loaded from Azure on mount)
+  const [disabledToolIds, setDisabledToolIds] = useState<Set<string>>(new Set())
   const isPausedRef = useRef(false)
 
   // Session check + live timer for player
@@ -86,6 +88,17 @@ export default function GameBoard() {
       isPausedRef.current = session.paused ?? false
       setTimerSeconds(getRemainingTime(session))
       startRound(roundId!)
+
+      // Load disabled tools from Azure Room so only GM-enabled tools are shown
+      const roomForTools = getCurrentRoom()
+      if (roomForTools) {
+        roomsApi.getAll().then((allRooms: any[]) => {
+          const azureRoom = allRooms.find((r: any) => r.id === roomForTools.id)
+          if (azureRoom?.disabledToolIds?.length) {
+            setDisabledToolIds(new Set(azureRoom.disabledToolIds))
+          }
+        }).catch(console.error)
+      }
       
       // Track current round in room for GM dashboard
       const player = getCurrentPlayer()
@@ -224,7 +237,7 @@ export default function GameBoard() {
     card => visibleDifficulties.includes(card.difficulty) && !completedCardIds.useCases.has(card.id)
   )
   const availableToolCards = allToolCards.filter(
-    card => visibleDifficulties.includes(card.difficulty)
+    card => visibleDifficulties.includes(card.difficulty) && !disabledToolIds.has(card.id)
   )
 
   // Memoize displayed cards — only re-shuffle after a match (shuffleSeed changes)
@@ -436,6 +449,13 @@ export default function GameBoard() {
           </div>
 
           <div className="flex items-center gap-6">
+            <button
+              onClick={() => navigate('/my-matches')}
+              className="flex items-center gap-2 bg-battle-purple/20 hover:bg-battle-purple/30 text-battle-purple px-3 py-2 rounded-lg border border-battle-purple/50 transition-colors text-sm font-semibold"
+            >
+              <ListChecks className="w-4 h-4" />
+              Meus Matches
+            </button>
             {timerVisible && timerSeconds !== null && (
               <div className="text-right">
                 <div className="text-sm text-neutral-400 flex items-center gap-1 justify-end">
@@ -464,51 +484,21 @@ export default function GameBoard() {
             <AlertCircle className="w-5 h-5 text-battle-blue flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm text-neutral-300">
-                Selecione <strong>1 Prompt</strong>, <strong>1 Caso de Uso</strong> e <strong>1 Ferramenta</strong> para criar uma combinação que derrote o vilão!
+                Selecione <strong>1 Caso de Uso</strong>, <strong>1 Prompt</strong> e <strong>1 Ferramenta</strong> para criar uma combinação que derrote o vilão!
               </p>
             </div>
           </div>
         </div>
 
-        {/* Cards Board */}
-        <div className="grid md:grid-cols-3 gap-4 mb-8 mx-auto">
-          {/* Prompts Column */}
+        {/* Cards Board — order: UseCase | Prompt | Tool */}
+        <div className="grid md:grid-cols-3 mb-8 mx-auto" style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}>
+          {/* Use Cases Column (left — verde) */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display text-sm font-bold text-energy-primary flex items-center gap-1">
-                <Zap className="w-4 h-4" />
-                Prompts
+              <h3 className="font-display text-sm font-bold text-battle-green flex items-center gap-1">
+                <Trophy className="w-4 h-4" />
+                Casos de Uso
               </h3>
-              <span className="text-xs text-neutral-400 bg-bg-secondary px-2 py-1 rounded">
-                {promptCards.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">{promptCards.map(card => (
-                <PlayingCard
-                  key={card.id}
-                  card={card}
-                  selected={selectedCards.prompt === card.id}
-                  onSelect={() => handleSelectCard(card.id, 'prompt')}
-                  villainColor={villain.color}
-                />
-              ))}
-              {promptCards.length === 0 && (
-                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700">
-                  Todas as cartas foram usadas!
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Use Cases Column */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h3 className="font-display text-sm font-bold text-battle-green flex items-center gap-1">
-                  <Trophy className="w-4 h-4" />
-                  Casos de Uso
-                </h3>
-              </div>
               <span className="text-xs text-neutral-400 bg-bg-secondary px-2 py-1 rounded">
                 {useCaseCards.length}
               </span>
@@ -521,19 +511,60 @@ export default function GameBoard() {
                   selected={selectedCards.useCase === card.id}
                   onSelect={() => handleSelectCard(card.id, 'useCase')}
                   villainColor={villain.color}
+                  typeAccent="#22c55e"
                 />
               ))}
               {useCaseCards.length === 0 && (
-                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700">
+                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700 col-span-2">
                   Todas as cartas foram usadas!
                 </div>
               )}
             </div>
           </div>
 
-          {/* Tools Column */}
+          {/* Divider */}
+          <div className="hidden md:flex items-stretch justify-center px-2">
+            <div className="w-px bg-neutral-700/60 self-stretch" />
+          </div>
+
+          {/* Prompts Column (middle — laranja) */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display text-sm font-bold text-energy-primary flex items-center gap-1">
+                <Zap className="w-4 h-4" />
+                Prompts
+              </h3>
+              <span className="text-xs text-neutral-400 bg-bg-secondary px-2 py-1 rounded">
+                {promptCards.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {promptCards.map(card => (
+                <PlayingCard
+                  key={card.id}
+                  card={card}
+                  selected={selectedCards.prompt === card.id}
+                  onSelect={() => handleSelectCard(card.id, 'prompt')}
+                  villainColor={villain.color}
+                  typeAccent="#f97316"
+                />
+              ))}
+              {promptCards.length === 0 && (
+                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700 col-span-2">
+                  Todas as cartas foram usadas!
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden md:flex items-stretch justify-center px-2">
+            <div className="w-px bg-neutral-700/60 self-stretch" />
+          </div>
+
+          {/* Tools Column (right — lilás) */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-display text-sm font-bold text-battle-purple flex items-center gap-1">
                 <Zap className="w-4 h-4" />
                 Ferramentas
@@ -550,10 +581,11 @@ export default function GameBoard() {
                   selected={selectedCards.tool === card.id}
                   onSelect={() => handleSelectCard(card.id, 'tool')}
                   villainColor={villain.color}
+                  typeAccent="#a855f7"
                 />
               ))}
               {toolCards.length === 0 && (
-                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700">
+                <div className="bg-bg-secondary/50 rounded-xl p-6 text-center text-neutral-500 border border-neutral-700 col-span-2">
                   Todas as cartas foram usadas!
                 </div>
               )}

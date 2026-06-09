@@ -21,8 +21,8 @@ export default function RoomLogin() {
       return
     }
 
-    if (!playerName.trim()) {
-      setError('Digite seu nome!')
+    if (!playerName.trim() || playerName.trim().split(' ').filter(Boolean).length < 2) {
+      setError('Digite seu nome e sobrenome completo!')
       return
     }
 
@@ -183,7 +183,7 @@ export default function RoomLogin() {
                 <div>
                   <label htmlFor="playerName" className="text-sm font-semibold text-neutral-300 mb-2 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Seu Nome
+                    Seu Nome <span className="text-neutral-500 font-normal">(nome e sobrenome)</span>
                   </label>
                   <input
                     type="text"
@@ -195,8 +195,9 @@ export default function RoomLogin() {
                     }}
                     placeholder="Ex: Maria Silva"
                     className="w-full bg-bg-tertiary text-neutral-200 text-lg rounded-lg px-4 py-3 border-2 border-neutral-700 focus:border-energy-primary focus:outline-none transition-colors"
-                    maxLength={40}
+                    maxLength={60}
                   />
+                  <p className="text-xs text-neutral-500 mt-1">Digite seu nome e sobrenome completo para identificação</p>
                 </div>
 
                 {/* Team Name */}
