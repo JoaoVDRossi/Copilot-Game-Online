@@ -53,7 +53,7 @@ export default function GameBoard() {
 
   const [score, setScore] = useState(0)
   const [matches, setMatches] = useState(0)
-  const [shuffleSeed, setShuffleSeed] = useState(0) // increments after each match to trigger card re-shuffle
+  const [shuffleSeed, setShuffleSeed] = useState(0) // increments after each match to re-order cards
   const [completedMatchKeys, setCompletedMatchKeys] = useState<Set<string>>(() => {
     // Track which exact combos were already scored
     if (!currentTeam || !roundId) return new Set()
@@ -174,69 +174,6 @@ export default function GameBoard() {
     return null
   }
 
-  // Helper function to select cards ensuring at least one valid match is always available
-  const selectCardsWithGuaranteedMatch = (
-    availablePrompts: Card[],
-    availableUseCases: Card[],
-    availableTools: Card[]
-  ): { prompts: Card[], useCases: Card[], tools: Card[] } => {
-    // Get all active match rules for this round (only for tools currently available to player)
-    const availableToolIds = new Set(availableTools.map(c => c.id))
-    const allRules = getAllMatchRules()
-    const roundRules = allRules.filter(rule =>
-      rule.roundId === roundId && rule.active && availableToolIds.has(rule.toolCardId)
-    )
-
-    // Shuffle rules so we don't always pick the first one
-    const shuffledRules = shuffle(roundRules)
-
-    // Find a valid match rule that hasn't been completed yet
-    let validRule = null
-    for (const rule of shuffledRules) {
-      const ruleKey = `${rule.promptCardId}|${rule.useCaseCardId}|${rule.toolCardId}`
-      if (completedMatchKeys.has(ruleKey)) continue // Skip already-completed matches
-
-      const promptAvailable = availablePrompts.find(c => c.id === rule.promptCardId)
-      const useCaseAvailable = availableUseCases.find(c => c.id === rule.useCaseCardId)
-      const toolAvailable = availableTools.find(c => c.id === rule.toolCardId)
-
-      if (promptAvailable && useCaseAvailable && toolAvailable) {
-        validRule = rule
-        break
-      }
-    }
-
-    // If we found a valid match, ensure those cards are included
-    if (validRule) {
-      const guaranteedPrompt = availablePrompts.find(c => c.id === validRule.promptCardId)!
-      const guaranteedUseCase = availableUseCases.find(c => c.id === validRule.useCaseCardId)!
-      const guaranteedTool = availableTools.find(c => c.id === validRule.toolCardId)!
-
-      // Get other available cards (excluding the guaranteed ones) and shuffle them
-      const otherPrompts = shuffle(availablePrompts.filter(c => c.id !== validRule.promptCardId))
-      const otherUseCases = shuffle(availableUseCases.filter(c => c.id !== validRule.useCaseCardId))
-
-      // Build final card lists: guaranteed card + ALL others, shuffled positions
-      const finalPrompts = shuffle([guaranteedPrompt, ...otherPrompts])
-      const finalUseCases = shuffle([guaranteedUseCase, ...otherUseCases])
-      // Tools stay in their original order (not shuffled)
-      const finalTools = [guaranteedTool, ...availableTools.filter(c => c.id !== validRule.toolCardId)]
-
-      return {
-        prompts: finalPrompts,
-        useCases: finalUseCases,
-        tools: finalTools,
-      }
-    }
-
-    // If no valid match found (all matches completed), return shuffled cards
-    return {
-      prompts: shuffle(availablePrompts),
-      useCases: shuffle(availableUseCases),
-      tools: availableTools,
-    }
-  }
-
   // Build sets of card IDs that were already used in correct matches
   const completedCardIds = useMemo(() => {
     const prompts = new Set<string>()
@@ -266,23 +203,62 @@ export default function GameBoard() {
     card => visibleDifficulties.includes(card.difficulty) && !disabledToolIds.has(card.id)
   )
 
-  // Memoize displayed cards — re-shuffle after a match OR when disabled tools change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const selectCards = useCallback(() => selectCardsWithGuaranteedMatch(
-    availablePromptCards,
-    availableUseCaseCards,
-    availableToolCards
-  ), [shuffleSeed, roundId, completedMatchKeys, disabledToolIds])
-  
-  const [displayedCards, setDisplayedCards] = useState(() => selectCards())
-  
-  useEffect(() => {
-    setDisplayedCards(selectCards())
-  }, [selectCards])
+  // Stable shuffled order for prompts and use-cases — computed ONCE per match completion.
+  // We store the shuffled ID order in refs so re-renders (timer, disabledToolIds) don't reshuffle.
+  const shuffledPromptOrderRef = useRef<string[]>([])
+  const shuffledUseCaseOrderRef = useRef<string[]>([])
 
-  const promptCards = displayedCards.prompts
-  const useCaseCards = displayedCards.useCases
-  const toolCards = displayedCards.tools
+  // Recompute shuffled order only when the SET of available cards changes (a match was completed).
+  // shuffleSeed increments after each match — use it as the sole trigger.
+  const prevShuffleSeedRef = useRef<number>(-1)
+  if (prevShuffleSeedRef.current !== shuffleSeed) {
+    prevShuffleSeedRef.current = shuffleSeed
+    // Ensure the guaranteed-match card is included, then shuffle positions
+    const allRulesForShuffle = getAllMatchRules()
+    const availableToolIds = new Set(availableToolCards.map(c => c.id))
+    const roundRulesForShuffle = allRulesForShuffle.filter(rule =>
+      rule.roundId === roundId && rule.active && availableToolIds.has(rule.toolCardId)
+    )
+    const shuffledRulesForShuffle = shuffle(roundRulesForShuffle)
+    let guaranteedRule = null
+    for (const rule of shuffledRulesForShuffle) {
+      const key = `${rule.promptCardId}|${rule.useCaseCardId}|${rule.toolCardId}`
+      if (completedMatchKeys.has(key)) continue
+      if (
+        availablePromptCards.find(c => c.id === rule.promptCardId) &&
+        availableUseCaseCards.find(c => c.id === rule.useCaseCardId) &&
+        availableToolCards.find(c => c.id === rule.toolCardId)
+      ) {
+        guaranteedRule = rule
+        break
+      }
+    }
+    if (guaranteedRule) {
+      const otherPromptIds = shuffle(availablePromptCards.filter(c => c.id !== guaranteedRule!.promptCardId).map(c => c.id))
+      const otherUseCaseIds = shuffle(availableUseCaseCards.filter(c => c.id !== guaranteedRule!.useCaseCardId).map(c => c.id))
+      shuffledPromptOrderRef.current = shuffle([guaranteedRule.promptCardId, ...otherPromptIds])
+      shuffledUseCaseOrderRef.current = shuffle([guaranteedRule.useCaseCardId, ...otherUseCaseIds])
+    } else {
+      shuffledPromptOrderRef.current = shuffle(availablePromptCards.map(c => c.id))
+      shuffledUseCaseOrderRef.current = shuffle(availableUseCaseCards.map(c => c.id))
+    }
+  }
+
+  // Apply stable order: sort by the shuffled ID list (unknown IDs go to end)
+  const promptCards = shuffledPromptOrderRef.current.length
+    ? [...availablePromptCards].sort((a, b) =>
+        (shuffledPromptOrderRef.current.indexOf(a.id) + 1 || 9999) -
+        (shuffledPromptOrderRef.current.indexOf(b.id) + 1 || 9999)
+      )
+    : availablePromptCards
+  const useCaseCards = shuffledUseCaseOrderRef.current.length
+    ? [...availableUseCaseCards].sort((a, b) =>
+        (shuffledUseCaseOrderRef.current.indexOf(a.id) + 1 || 9999) -
+        (shuffledUseCaseOrderRef.current.indexOf(b.id) + 1 || 9999)
+      )
+    : availableUseCaseCards
+  // Tool cards: filter only — no shuffle, order follows disabledToolIds changes
+  const toolCards = availableToolCards
 
   const handleSelectCard = (cardId: string, type: 'prompt' | 'useCase' | 'tool') => {
     setSelectedCards(prev => ({
