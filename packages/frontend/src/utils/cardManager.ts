@@ -8,11 +8,18 @@ const CARDS_STORAGE_KEY = 'copilot-combate-cards'
 const MATCH_RULES_STORAGE_KEY = 'copilot-combate-match-rules'
 
 // Get all cards (from localStorage or defaults)
+// Always uses defaultCards as base (ensures title/description are up-to-date),
+// merging only the `active` field from localStorage so tool toggles are preserved.
 export const getAllCards = (): Card[] => {
   const stored = localStorage.getItem(CARDS_STORAGE_KEY)
   if (stored) {
     try {
-      return JSON.parse(stored)
+      const storedCards: Card[] = JSON.parse(stored)
+      const activeMap = new Map(storedCards.map(c => [c.id, c.active]))
+      return defaultCards.map(c => ({
+        ...c,
+        active: activeMap.has(c.id) ? (activeMap.get(c.id) as boolean) : c.active,
+      }))
     } catch (e) {
       console.error('Error parsing stored cards:', e)
       return defaultCards
