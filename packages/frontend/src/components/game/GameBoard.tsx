@@ -66,6 +66,9 @@ export default function GameBoard() {
   // Tool IDs disabled by GM for this room (loaded from Azure on mount)
   const [disabledToolIds, setDisabledToolIds] = useState<Set<string>>(new Set())
   const isPausedRef = useRef(false)
+  // Refs for debounced Azure sync (prevents race condition when matches happen rapidly)
+  const syncAzureRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestSyncDataRef = useRef<{ score: number; matchCount: number } | null>(null)
 
   // Session check + live timer for player
   useEffect(() => {
@@ -125,11 +128,18 @@ export default function GameBoard() {
         setTimerVisible(session.timerVisible !== false)
         isPausedRef.current = session.paused ?? false
         setTimerSeconds(getRemainingTime(session))
-        // Check if room was closed by GM
+        // Check if room was closed or deleted by GM
         try {
           const allRooms = await roomsApi.getAll()
           const currentRoomFromApi = allRooms.find((r: any) => r.id === room?.id)
-          if (currentRoomFromApi?.status === 'finished') {
+          if (!currentRoomFromApi) {
+            alert('⚠️ A sala foi excluída pelo Game Master! Você será redirecionado.')
+            localStorage.removeItem('copilot-combate-current-room')
+            localStorage.removeItem('copilot-combate-current-player')
+            navigate('/')
+            return
+          }
+          if (currentRoomFromApi.status === 'finished') {
             alert('⚠️ A sala foi encerrada pelo Game Master!')
             navigate('/')
             return
@@ -312,25 +322,31 @@ export default function GameBoard() {
       const player = getCurrentPlayer()
       if (player) {
         updateTeamScore(player.roomId, player.teamId, pointsEarned)
-        // Sync to Azure using absolute local score (Math.max avoids overwriting higher concurrent writes)
-        roomsApi.getAll().then((allRooms: any[]) => {
-          const azureRoom = allRooms.find((r: any) => r.id === player.roomId)
-          if (azureRoom) {
-            const updatedTeams = azureRoom.teams.map((t: any) => {
-              if (t.id !== player.teamId) return t
-              const prevMatchCount = (t.matchCountPerRound?.[roundId!] || 0)
-              return {
-                ...t,
-                score: Math.max(localTotalScore, t.score || 0),
-                matchCountPerRound: {
-                  ...(t.matchCountPerRound || {}),
-                  [roundId!]: prevMatchCount + 1,
-                },
-              }
-            })
-            roomsApi.update({ ...azureRoom, teams: updatedTeams }).catch(console.error)
-          }
-        }).catch(console.error)
+        // Debounced Azure sync — prevents race condition when multiple matches happen in quick succession.
+        // Always uses absolute local values (score + matchCount) at the time of write, not deltas.
+        latestSyncDataRef.current = { score: localTotalScore, matchCount: newCompletedKeys.size }
+        if (syncAzureRef.current) clearTimeout(syncAzureRef.current)
+        syncAzureRef.current = setTimeout(() => {
+          const syncData = latestSyncDataRef.current
+          if (!syncData) return
+          roomsApi.getAll().then((allRooms: any[]) => {
+            const azureRoom = allRooms.find((r: any) => r.id === player.roomId)
+            if (azureRoom) {
+              const updatedTeams = azureRoom.teams.map((t: any) => {
+                if (t.id !== player.teamId) return t
+                return {
+                  ...t,
+                  score: Math.max(syncData.score, t.score || 0),
+                  matchCountPerRound: {
+                    ...(t.matchCountPerRound || {}),
+                    [roundId!]: Math.max(syncData.matchCount, t.matchCountPerRound?.[roundId!] || 0),
+                  },
+                }
+              })
+              roomsApi.update({ ...azureRoom, teams: updatedTeams }).catch(console.error)
+            }
+          }).catch(console.error)
+        }, 600)
       }
       
       // Add points to round progress
@@ -338,13 +354,15 @@ export default function GameBoard() {
       
       // Save match to history
       if (currentTeam) {
+        const currentPlayerName = getCurrentPlayer()?.name
         addMatchToHistory(
           currentTeam.id,
           currentTeam.name,
           roundId!,
           prompt,
           useCase,
-          tool
+          tool,
+          currentPlayerName
         )
         // Also save to Azure for GM dashboard
         matchesApi.create({
@@ -357,6 +375,7 @@ export default function GameBoard() {
           toolCardId: tool,
           timestamp: new Date().toISOString(),
           tested: false,
+          playerName: currentPlayerName,
         }).catch(console.error)
       }
       

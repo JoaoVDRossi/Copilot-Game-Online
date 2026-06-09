@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { getCurrentTeamStats, saveTeam, getCurrentTeam } from '../../utils/teamsManager'
 import { getCurrentTeamRoundProgress } from '../../utils/roundProgressManager'
 import { getCurrentPlayer, getRoomById, getCurrentRoom } from '../../utils/roomManager'
-import { roomsApi } from '../../utils/apiClient'
+import { roomsApi, matchesApi } from '../../utils/apiClient'
 
 const roundsBase = [
   {
@@ -99,8 +99,14 @@ export default function RoundSelection() {
       setPlayerName(player.name)
       try {
         const rooms: any[] = await roomsApi.getAll()
-        const liveRoom = rooms.find((r: any) => r.id === player.roomId)
-        if (liveRoom) {
+        const liveRoom = rooms.find((r: any) => r.id === player.roomId)        if (!liveRoom) {
+          // Room was deleted by GM
+          alert('⚠️ A sala foi excluída pelo Game Master!')
+          localStorage.removeItem('copilot-combate-current-room')
+          localStorage.removeItem('copilot-combate-current-player')
+          navigate('/')
+          return
+        }        if (liveRoom) {
           setActivePlayers(liveRoom.teams.length || 0)
           setAllRoomTeams(liveRoom.teams || [])
           if (liveRoom.status === 'finished') {
@@ -117,6 +123,26 @@ export default function RoundSelection() {
             if (teamInRoom && typeof teamInRoom.score === 'number' && teamInRoom.score > (currentTeamLocal.score || 0)) {
               const synced = { ...currentTeamLocal, score: teamInRoom.score }
               localStorage.setItem('current-team', JSON.stringify(synced))
+            }
+          }
+          // Load per-member match counts for team ranking (only when team has 2+ members)
+          const currentPlayer = getCurrentPlayer()
+          if (currentPlayer) {
+            const myTeam = (liveRoom.teams || []).find((t: any) => t.id === currentPlayer.teamId)
+            if (myTeam && (myTeam.members || []).length >= 2) {
+              try {
+                const teamMatches: any[] = await matchesApi.getAll(currentPlayer.teamId)
+                const counts: Record<string, number> = {}
+                for (const member of myTeam.members) counts[member] = 0
+                for (const m of teamMatches) {
+                  if (m.playerName && counts[m.playerName] !== undefined) {
+                    counts[m.playerName]++
+                  } else if (m.playerName) {
+                    counts[m.playerName] = (counts[m.playerName] || 0) + 1
+                  }
+                }
+                setTeamMemberMatches(counts)
+              } catch (_) { /* ignore */ }
             }
           }
         } else {
@@ -160,6 +186,7 @@ export default function RoundSelection() {
   const [editingName, setEditingName] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
   const [allRoomTeams, setAllRoomTeams] = useState<any[]>([])
+  const [teamMemberMatches, setTeamMemberMatches] = useState<Record<string, number>>({})
 
   const handleEditName = () => {
     setNewPlayerName(playerName)
@@ -405,6 +432,44 @@ export default function RoundSelection() {
                     })()}
                   </div>
                 )}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Team Member Ranking (only when 2+ members) */}
+        {(() => {
+          const currentPlayer = getCurrentPlayer()
+          if (!currentPlayer) return null
+          const myTeam = allRoomTeams.find(t => t.id === currentPlayer.teamId)
+          if (!myTeam || (myTeam.members || []).length < 2) return null
+          const members: string[] = myTeam.members || []
+          const sorted = [...members].sort((a, b) => (teamMemberMatches[b] || 0) - (teamMemberMatches[a] || 0))
+          const medals = ['🥇', '🥈', '🥉']
+          return (
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="bg-bg-secondary/80 backdrop-blur-sm rounded-xl p-5 border border-battle-purple/40">
+                <h3 className="font-display text-sm font-bold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-battle-purple" /> Ranking do Time — {myTeam.name}
+                </h3>
+                <div className="space-y-2">
+                  {sorted.map((member, i) => {
+                    const count = teamMemberMatches[member] || 0
+                    const isMe = member === currentPlayer.name
+                    return (
+                      <div key={member} className={`flex items-center justify-between rounded-lg px-3 py-2 ${isMe ? 'bg-battle-purple/10 border border-battle-purple/30' : 'bg-bg-tertiary'}`}>
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 text-base">{i < 3 ? medals[i] : `#${i + 1}`}</span>
+                          <span className={`text-sm font-semibold ${isMe ? 'text-battle-purple' : 'text-neutral-200'}`}>
+                            {member}{isMe ? ' (você)' : ''}
+                          </span>
+                        </div>
+                        <span className="font-mono text-sm text-neutral-300">{count} match{count !== 1 ? 'es' : ''}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-neutral-600 mt-3">Contagem de matches feitos por jogador neste round. Incentive seus colegas!</p>
               </div>
             </div>
           )

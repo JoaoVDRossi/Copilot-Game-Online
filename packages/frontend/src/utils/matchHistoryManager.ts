@@ -10,6 +10,7 @@ export interface MatchHistory {
   toolCardId: string
   timestamp: string
   tested: boolean
+  playerName?: string // nome do jogador que fez o match
 }
 
 const MATCH_HISTORY_KEY = 'copilot-combate-match-history'
@@ -38,7 +39,8 @@ export const addMatchToHistory = (
   roundId: string,
   promptCardId: string,
   useCaseCardId: string,
-  toolCardId: string
+  toolCardId: string,
+  playerName?: string
 ): void => {
   const history = getAllMatchHistory()
   
@@ -63,6 +65,7 @@ export const addMatchToHistory = (
       toolCardId,
       timestamp: new Date().toISOString(),
       tested: false,
+      playerName,
     }
     
     history.push(newMatch)
