@@ -914,6 +914,9 @@ export default function GameMasterDashboard() {
                     <div className="space-y-4">
                       {pendingValidations.filter(v => v.roundId === validationRoundTab).map((validation) => {
                         const useCaseCard = getCardById(validation.useCaseCardId)
+                        const matchRule = matchRules.find(r => r.useCaseCardId === validation.useCaseCardId && r.roundId === validation.roundId)
+                        const promptCard = matchRule ? getCardById(matchRule.promptCardId) : undefined
+                        const toolCard = matchRule ? getCardById(matchRule.toolCardId) : undefined
                         const submittedDate = new Date(validation.submittedAt)
                         const diffMinutes = Math.floor((new Date().getTime() - submittedDate.getTime()) / 60000)
                         const timeAgo = diffMinutes < 1 ? 'Agora' : diffMinutes < 60 ? `${diffMinutes}m atrás` : diffMinutes < 1440 ? `${Math.floor(diffMinutes / 60)}h atrás` : `${Math.floor(diffMinutes / 1440)}d atrás`
@@ -938,13 +941,32 @@ export default function GameMasterDashboard() {
                                 </button>
                               </div>
                             </div>
-                            <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-purple">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Target className="w-4 h-4 text-battle-purple" />
-                                <span className="text-xs font-bold text-battle-purple uppercase">Caso de Uso Testado</span>
+                            {/* 3-card grid: Caso de Uso + Prompt + Ferramenta */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-green">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Target className="w-4 h-4 text-battle-green" />
+                                  <span className="text-xs font-bold text-battle-green uppercase">Caso de Uso</span>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{useCaseCard?.title || validation.useCaseTitle}</p>
+                                {useCaseCard?.description && <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{useCaseCard.description}</p>}
                               </div>
-                              <p className="text-sm text-neutral-200 font-medium">{useCaseCard?.title || validation.useCaseTitle}</p>
-                              {useCaseCard?.description && <p className="text-xs text-neutral-500 mt-2">{useCaseCard.description}</p>}
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-orange-500">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Flag className="w-4 h-4 text-orange-400" />
+                                  <span className="text-xs font-bold text-orange-400 uppercase">Prompt</span>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{promptCard?.title || '—'}</p>
+                                {promptCard?.description && <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{promptCard.description}</p>}
+                              </div>
+                              <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-purple">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Target className="w-4 h-4 text-battle-purple" />
+                                  <span className="text-xs font-bold text-battle-purple uppercase">Ferramenta</span>
+                                </div>
+                                <p className="text-sm font-semibold text-neutral-200">{toolCard?.title || '—'}</p>
+                                {toolCard?.description && <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{toolCard.description}</p>}
+                              </div>
                             </div>
                             {validation.imageUrl && (
                               <div className="bg-bg-primary rounded-lg p-4 border-l-4 border-battle-blue mt-3">
