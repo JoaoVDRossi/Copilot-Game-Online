@@ -38,6 +38,7 @@ export default function GameMasterDashboard() {
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
   const [leaderboardSubTab, setLeaderboardSubTab] = useState<string>('geral')
+  const [validationRoundTab, setValidationRoundTab] = useState<string>('round-1')
   const [isGameFinishedState, setIsGameFinishedState] = useState(false)
 
   // Session control
@@ -874,15 +875,41 @@ export default function GameMasterDashboard() {
                       <p className="text-sm text-neutral-400 mt-1">Testes enviados pelos participantes desta sala</p>
                     </div>
                   </div>
-                  {pendingValidations.length === 0 ? (
+
+                  {/* Round sub-tabs */}
+                  <div className="flex gap-2 mb-5 flex-wrap">
+                    {(['round-1','round-2','round-3','round-4'] as const).map(rid => {
+                      const count = pendingValidations.filter(v => v.roundId === rid).length
+                      return (
+                        <button
+                          key={rid}
+                          onClick={() => setValidationRoundTab(rid)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                            validationRoundTab === rid
+                              ? 'bg-battle-blue/20 border-battle-blue/60 text-battle-blue'
+                              : 'bg-bg-tertiary border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-500'
+                          }`}
+                        >
+                          {rid.replace('round-', 'Round ')}
+                          {count > 0 && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              validationRoundTab === rid ? 'bg-battle-blue/30 text-battle-blue' : 'bg-neutral-700 text-neutral-400'
+                            }`}>{count}</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {pendingValidations.filter(v => v.roundId === validationRoundTab).length === 0 ? (
                     <div className="text-center py-12 text-neutral-400">
                       <Check className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="mb-2">Nenhum teste pendente de validação</p>
-                      <p className="text-sm">Quando jogadores submeterem testes, eles aparecerão aqui</p>
+                      <p className="mb-2">Nenhum teste pendente neste round</p>
+                      <p className="text-sm">Quando jogadores submeterem testes deste round, eles aparecerão aqui</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {pendingValidations.map((validation) => {
+                      {pendingValidations.filter(v => v.roundId === validationRoundTab).map((validation) => {
                         const useCaseCard = getCardById(validation.useCaseCardId)
                         const submittedDate = new Date(validation.submittedAt)
                         const diffMinutes = Math.floor((new Date().getTime() - submittedDate.getTime()) / 60000)

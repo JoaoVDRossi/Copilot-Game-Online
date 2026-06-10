@@ -42,6 +42,7 @@ export default function ValidatorDashboard() {
   const [isStarting, setIsStarting] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [leaderboardSubTab, setLeaderboardSubTab] = useState<string>('geral')
+  const [validationRoundTab, setValidationRoundTab] = useState<string>('round-1')
   const matchRules = getAllMatchRules()
   const cards = getAllCards()
 
@@ -518,15 +519,41 @@ export default function ValidatorDashboard() {
                 <p className="text-sm text-neutral-400 mt-1">Testes enviados pelos participantes desta sala</p>
               </div>
             </div>
-            {pendingValidations.length === 0 ? (
+
+            {/* Round sub-tabs */}
+            <div className="flex gap-2 mb-5 flex-wrap">
+              {ROUNDS.map(r => {
+                const count = pendingValidations.filter(v => v.roundId === r.id).length
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setValidationRoundTab(r.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                      validationRoundTab === r.id
+                        ? 'bg-battle-blue/20 border-battle-blue/60 text-battle-blue'
+                        : 'bg-bg-tertiary border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-500'
+                    }`}
+                  >
+                    {r.id.replace('round-', 'Round ')}
+                    {count > 0 && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        validationRoundTab === r.id ? 'bg-battle-blue/30 text-battle-blue' : 'bg-neutral-700 text-neutral-400'
+                      }`}>{count}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {pendingValidations.filter(v => v.roundId === validationRoundTab).length === 0 ? (
               <div className="text-center py-12 text-neutral-400">
                 <CheckCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="mb-2">Nenhum teste pendente de validação</p>
-                <p className="text-sm">Quando jogadores submeterem testes, eles aparecerão aqui</p>
+                <p className="mb-2">Nenhum teste pendente neste round</p>
+                <p className="text-sm">Quando jogadores submeterem testes do {ROUNDS.find(r => r.id === validationRoundTab)?.id.replace('round-', 'Round ')}, eles aparecerão aqui</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {pendingValidations.map((validation) => {
+                {pendingValidations.filter(v => v.roundId === validationRoundTab).map((validation) => {
                   const submittedDate = new Date(validation.submittedAt)
                   const diffMinutes = Math.floor((new Date().getTime() - submittedDate.getTime()) / 60000)
                   const timeAgo =
@@ -597,9 +624,9 @@ export default function ValidatorDashboard() {
                   )
                 })}
                 <div className="mt-6 p-4 bg-bg-tertiary/30 rounded-lg border border-neutral-700/50 text-center">
-                  <div className="text-2xl font-bold text-battle-blue">{pendingValidations.length}</div>
+                  <div className="text-2xl font-bold text-battle-blue">{pendingValidations.filter(v => v.roundId === validationRoundTab).length}</div>
                   <div className="text-xs text-neutral-400 mt-1">
-                    {pendingValidations.length === 1 ? 'Teste Pendente' : 'Testes Pendentes'}
+                    {pendingValidations.filter(v => v.roundId === validationRoundTab).length === 1 ? 'Teste Pendente neste Round' : 'Testes Pendentes neste Round'}
                   </div>
                 </div>
               </div>
