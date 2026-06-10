@@ -355,7 +355,17 @@ export default function MyMatches() {
           </div>
         ) : (
           <div className="space-y-4">
-            {matches.filter(m => m.roundId === selectedRound).map((match) => {
+            {matches
+              .filter(m => m.roundId === selectedRound)
+              .sort((a, b) => {
+                const priority = (m: MatchHistory) => {
+                  if (getMatchRejection(m.id) || isMatchValidated(m.id)) return 2  // avaliado
+                  if (m.tested) return 1  // aguardando validação
+                  return 0  // ainda não enviado
+                }
+                return priority(a) - priority(b)
+              })
+              .map((match) => {
               const promptCard = getCardById(match.promptCardId)
               const useCaseCard = getCardById(match.useCaseCardId)
               const toolCard = getCardById(match.toolCardId)
