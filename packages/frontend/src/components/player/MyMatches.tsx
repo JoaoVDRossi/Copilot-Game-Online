@@ -26,6 +26,7 @@ export default function MyMatches() {
   const [selectedMatchForTest, setSelectedMatchForTest] = useState<string | null>(null)
   const [testImage, setTestImage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [selectedRound, setSelectedRound] = useState<string>('round-1')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleCopy = (text: string, key: string) => {
@@ -312,20 +313,49 @@ export default function MyMatches() {
           </div>
         </div>
 
+        {/* Round Sub-tabs */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {ROUND_ORDER.map(roundId => {
+            const count = matches.filter(m => m.roundId === roundId).length
+            return (
+              <button
+                key={roundId}
+                onClick={() => setSelectedRound(roundId)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors border ${
+                  selectedRound === roundId
+                    ? 'bg-battle-purple/20 border-battle-purple/60 text-battle-purple'
+                    : 'bg-bg-secondary border-white/10 text-neutral-400 hover:text-neutral-200 hover:border-white/30'
+                }`}
+              >
+                {roundMeta[roundId]?.label.split(' — ')[0] || roundId}
+                {count > 0 && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    selectedRound === roundId ? 'bg-battle-purple/30 text-battle-purple' : 'bg-neutral-700 text-neutral-400'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
         {/* Matches List */}
-        {matches.length === 0 ? (
+        {matches.filter(m => m.roundId === selectedRound).length === 0 ? (
           <div className="bg-bg-secondary rounded-xl p-12 border border-white/10 text-center">
             <Trophy className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
             <h3 className="font-display text-xl font-bold text-neutral-400 mb-2">
-              Nenhum match registrado ainda
+              {matches.length === 0 ? 'Nenhum match registrado ainda' : 'Nenhum match neste round'}
             </h3>
             <p className="text-sm text-neutral-500">
-              Complete rounds para ver suas combinações corretas aqui!
+              {matches.length === 0
+                ? 'Complete rounds para ver suas combinações corretas aqui!'
+                : 'Complete combinações no jogo para ver os matchs deste round aqui.'}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {matches.map((match) => {
+            {matches.filter(m => m.roundId === selectedRound).map((match) => {
               const promptCard = getCardById(match.promptCardId)
               const useCaseCard = getCardById(match.useCaseCardId)
               const toolCard = getCardById(match.toolCardId)
