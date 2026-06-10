@@ -16,7 +16,7 @@ import {
   type TestValidation,
 } from '../../utils/testValidationManager'
 import { roomsApi } from '../../utils/apiClient'
-import { getAllMatchRules } from '../../utils/cardManager'
+import { getAllMatchRules, getAllCards } from '../../utils/cardManager'
 import { RoundSession } from '../../types'
 
 const ROUNDS = [
@@ -26,7 +26,7 @@ const ROUNDS = [
   { id: 'round-4', name: 'Round 4 - ControlC+V', durationMinutes: 15 },
 ]
 
-type Tab = 'session' | 'leaderboard' | 'validation'
+type Tab = 'session' | 'leaderboard' | 'gabarito' | 'validation'
 
 export default function ValidatorDashboard() {
   const navigate = useNavigate()
@@ -43,6 +43,7 @@ export default function ValidatorDashboard() {
   const [isStopping, setIsStopping] = useState(false)
   const [leaderboardSubTab, setLeaderboardSubTab] = useState<string>('geral')
   const matchRules = getAllMatchRules()
+  const cards = getAllCards()
 
   useEffect(() => {
     if (!validatorSession) {
@@ -201,6 +202,7 @@ export default function ValidatorDashboard() {
           {([
             { id: 'session' as Tab, label: 'Sessão', icon: Play },
             { id: 'leaderboard' as Tab, label: 'Classificação', icon: Trophy },
+            { id: 'gabarito' as Tab, label: 'Gabarito', icon: Target },
             { id: 'validation' as Tab, label: `Validar Testes${pendingValidations.length > 0 ? ` (${pendingValidations.length})` : ''}`, icon: CheckCircle },
           ]).map(({ id, label, icon: Icon }) => (
             <button
@@ -447,6 +449,42 @@ export default function ValidatorDashboard() {
             </div>
           )
         })()}
+
+        {/* Gabarito Tab */}
+        {activeTab === 'gabarito' && (
+          <div className="bg-bg-secondary rounded-xl p-6 border border-neutral-700">
+            <h3 className="font-display text-xl font-bold text-neutral-50 mb-4">Gabaritos</h3>
+            <p className="text-sm text-neutral-400 mb-4">
+              Combinações corretas: Prompt + Caso de Uso + Ferramenta.
+            </p>
+            <div className="space-y-3">
+              {ROUNDS.map(round => {
+                const roundRules = matchRules.filter(r => r.roundId === round.id && r.active)
+                return (
+                  <div key={round.id} className="bg-bg-tertiary rounded-lg p-4">
+                    <h4 className="font-display font-bold text-neutral-200 mb-3">
+                      {round.name} ({roundRules.length} regras)
+                    </h4>
+                    {roundRules.map(rule => {
+                      const prompt = cards.find(c => c.id === rule.promptCardId)
+                      const useCase = cards.find(c => c.id === rule.useCaseCardId)
+                      const tool = cards.find(c => c.id === rule.toolCardId)
+                      return (
+                        <div key={rule.id} className="flex items-center gap-2 text-sm mb-2 bg-bg-primary/50 rounded px-3 py-2">
+                          <span className="text-energy-primary font-semibold">{prompt?.title || '?'}</span>
+                          <span className="text-neutral-600">+</span>
+                          <span className="text-battle-green font-semibold">{useCase?.title || '?'}</span>
+                          <span className="text-neutral-600">+</span>
+                          <span className="text-battle-purple font-semibold">{tool?.title || '?'}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Validation Tab */}
         {activeTab === 'validation' && (
