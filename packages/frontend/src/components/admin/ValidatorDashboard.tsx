@@ -11,6 +11,7 @@ import {
 } from '../../utils/sessionManager'
 import {
   getPendingValidations,
+  getAllTestValidations,
   markValidationCompleted,
   rejectValidation,
   type TestValidation,
@@ -37,6 +38,7 @@ export default function ValidatorDashboard() {
   const [timerSeconds, setTimerSeconds] = useState<number>(0)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
+  const [allValidations, setAllValidations] = useState<TestValidation[]>([])
   const [room, setRoom] = useState<any | null>(null)
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
@@ -59,9 +61,10 @@ export default function ValidatorDashboard() {
   const loadData = async () => {
     if (!validatorSession) return
     try {
-      const [session, validations, rooms] = await Promise.all([
+      const [session, validations, allV, rooms] = await Promise.all([
         fetchActiveSession(validatorSession.gmId, validatorSession.roomId),
         getPendingValidations(),
+        getAllTestValidations(),
         roomsApi.getAll(),
       ])
       setActiveSession(session)
@@ -90,12 +93,12 @@ export default function ValidatorDashboard() {
         ((currentRoom?.teams) || []).map((t: any) => String(t.name).toLowerCase())
       )
       const roomId = validatorSession.roomId
-      setPendingValidations(
-        validations.filter((v) => {
-          if (v.roomId) return v.roomId === roomId
-          return roomTeamNames.has(String(v.teamName || '').toLowerCase())
-        })
-      )
+      const roomFilter = (v: any) => {
+        if (v.roomId) return v.roomId === roomId
+        return roomTeamNames.has(String(v.teamName || '').toLowerCase())
+      }
+      setPendingValidations(validations.filter(roomFilter))
+      setAllValidations(allV.filter(roomFilter))
     } catch (err) {
       console.error('ValidatorDashboard loadData error:', err)
     }
@@ -335,7 +338,7 @@ export default function ValidatorDashboard() {
             team.matchCountPerRound?.[roundId] || 0
 
           const roundValidatedPoints = (teamId: string, roundId: string): number =>
-            pendingValidations
+            allValidations
               .filter((v: any) => v.teamId === teamId && v.roundId === roundId && v.validated && !v.rejected)
               .length * 10
 

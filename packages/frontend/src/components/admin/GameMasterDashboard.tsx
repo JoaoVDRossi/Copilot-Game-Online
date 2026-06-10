@@ -13,7 +13,7 @@ import {
   getAllMatchRules,
   toggleToolAndCascade,
 } from '../../utils/cardManager'
-import { getPendingValidations, markValidationCompleted, rejectValidation, clearAllTestValidations, TestValidation } from '../../utils/testValidationManager'
+import { getPendingValidations, getAllTestValidations, markValidationCompleted, rejectValidation, clearAllTestValidations, TestValidation } from '../../utils/testValidationManager'
 import { clearAllTeams } from '../../utils/teamsManager'
 import { resetAllRoundsProgress } from '../../utils/roundProgressManager'
 import { finishGame, resetGameState } from '../../utils/gameStateManager'
@@ -36,6 +36,7 @@ export default function GameMasterDashboard() {
   const [cards, setCards] = useState(getAllCards)
   const matchRules = getAllMatchRules()
   const [pendingValidations, setPendingValidations] = useState<TestValidation[]>([])
+  const [allValidations, setAllValidations] = useState<TestValidation[]>([])
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
   const [leaderboardSubTab, setLeaderboardSubTab] = useState<string>('geral')
   const [validationRoundTab, setValidationRoundTab] = useState<string>('round-1')
@@ -111,15 +112,17 @@ export default function GameMasterDashboard() {
       const s = await fetchActiveSession(gmId, roomId)
       setActiveSession(prev => (s?.id !== prev?.id ? s : prev))
       try {
-        const validations = await getPendingValidations()
+        const [validations, all] = await Promise.all([getPendingValidations(), getAllTestValidations()])
         // Filter by roomId when available (preferred); fall back to team name matching
         const roomTeamNames = new Set(
           (selectedRoom.teams || []).map((t: any) => String(t.name).toLowerCase())
         )
-        setPendingValidations(validations.filter((v: any) => {
+        const roomFilter = (v: any) => {
           if (v.roomId) return v.roomId === roomId
           return roomTeamNames.has(String(v.teamName || '').toLowerCase())
-        }))
+        }
+        setPendingValidations(validations.filter(roomFilter))
+        setAllValidations(all.filter(roomFilter))
       } catch (_) {}
     }
     updateState()
@@ -674,9 +677,9 @@ export default function GameMasterDashboard() {
                 return team.matchCountPerRound?.[roundId] || 0
               }
 
-              // Pontos de validação por time/round
+              // Pontos de validação por time/round (usa allValidations para incluir já validados)
               const roundValidatedPoints = (teamId: string, roundId: string): number => {
-                return pendingValidations
+                return allValidations
                   .filter((v: any) => v.teamId === teamId && v.roundId === roundId && v.validated && !v.rejected)
                   .length * 10
               }
